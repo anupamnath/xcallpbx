@@ -32,4 +32,9 @@ UPDATE v_default_settings SET default_setting_value='XCall'
  WHERE default_setting_category='theme' AND default_setting_subcategory='menu_brand_text';
 SQL
 
+# apply the AI assistant schema (idempotent)
+psql -U postgres -d fusionpbx -f /var/www/fusionpbx/ai-assistant/schema.sql 2>/dev/null \
+    && echo "[xcall] AI assistant schema applied" \
+    || echo "[xcall] AI assistant schema skipped"
+
 wait "$STOCK_PID"

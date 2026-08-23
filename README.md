@@ -7,12 +7,21 @@ engine) and **FusionPBX** (management portal, rebranded here as "XCall"). It pro
   (an embedded SIP.js softphone in the portal). No desktop client required.
 - **Web login portal** — the XCall portal (rebranded FusionPBX) with a custom theme, logo, and
   an in-browser softphone for making/receiving calls, transferring, and answering queues.
-- **AI voice agent** — an inbound voice bot (Python) that answers calls, runs a *scripted*
-  conversation (TTS → record → STT → LLM decision), and at the right point tells the caller
-  to **hold the line** and **forwards the call to a human specialist** (a normal extension
-  answered via the web softphone).
+- **AI voice agent** — an inbound voice bot (Python) that answers calls. Two
+  engines:
+  - *Assistant mode* (new): an LLM runs the whole conversation using the
+    assistant you configure in the portal — write your own context, pick any
+    provider (OpenAI/Anthropic/Gemini/Groq via API key, or your local machine
+    via Ollama) — and the bot transfers callers to a human specialist when the
+    LLM decides to escalate.
+  - *Script mode*: a YAML state machine (TTS → record → STT → next step) that
+    plays a fixed flow and forwards to a human specialist.
+- **AI Assistant manager** — a Telnyx-style portal page (`/ai-assistant/`)
+  where you add context, choose the model (API key or local machine), set the
+  voice/handoff settings, and the agent picks it up on the next call.
 - **Local AI integration** — STT, LLM, and TTS all run against local engines
-  (faster-whisper / whisper.cpp, Ollama, Piper), so no call audio leaves your network.
+  (faster-whisper / whisper.cpp, Ollama, Piper), so no call audio leaves your
+  network unless you choose a cloud provider for the assistant's LLM.
 
 > **Purpose.** XCall is a legitimate self-hosted PBX. It is designed for real businesses —
 > e.g. an IT helpdesk where a bot performs first-line triage and hands difficult cases to a
@@ -25,12 +34,12 @@ engine) and **FusionPBX** (management portal, rebranded here as "XCall"). It pro
 ## Repository layout
 
 ```
-ai-agent/          Python AI voice agent (ESL client, script engine, STT/TTS/LLM adapters, tests)
+ai-agent/          Python AI voice agent (ESL client, script + assistant engines, LLM chat, tests)
 freeswitch/        FreeSWITCH configuration (dialplan, verto/WebRTC, sofia, ESL, ACLs)
-portal/            XCall branding + web softphone for the FusionPBX portal
+portal/            XCall branding + web softphone + AI Assistant manager for the portal
 docker/            Docker Compose + images (FreeSWITCH, portal, AI agent)
 deploy/            Non-Docker installer for a bare Ubuntu server
-docs/              Architecture, setup guide, WebRTC provisioning, AI agent guide
+docs/              Architecture, setup, WebRTC provisioning, AI agent guide, VPS hosting
 ```
 
 ## Quick start (Docker)

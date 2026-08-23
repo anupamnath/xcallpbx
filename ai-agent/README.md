@@ -1,9 +1,14 @@
 # XCall AI Agent
 
-A Python voice agent that automates scripted inbound calls on a FreeSWITCH PBX:
-it answers calls parked in the `xcall_ai` context, runs a conversation
-(script → TTS → record → STT → LLM/keyword routing), and at the handoff node
-plays "please hold" and transfers the caller to a human specialist.
+A Python voice agent that automates inbound calls on a FreeSWITCH PBX: it
+answers calls parked in the `xcall_ai` context and runs a conversation. Two
+engines:
+
+- **assistant mode** — the LLM runs the conversation using the assistant
+  configured in the portal (`/ai-assistant/`): your context, model provider
+  (API key or local machine via Ollama), voice, and handoff settings. The LLM
+  decides when to play "please hold" and transfer to a human specialist.
+- **script mode** — a YAML state machine (TTS → record → STT → next step).
 
 > It never dials out. Inbound calls → agent → handoff to human.
 
@@ -11,15 +16,19 @@ plays "please hold" and transfers the caller to a human specialist.
 
 ```
 xcall_agent/
-├── __main__.py        # entrypoint (python -m xcall_agent --config config.yaml)
-├── config.py          # config loading + defaults
-├── esl_client.py      # FreeSWITCH Event Socket client
-├── orchestrator.py    # VoiceAgent: drives parked calls
-├── script_engine.py   # YAML script state machine
-├── stt.py             # whisper / vosk / stub
-├── tts.py             # piper / espeak / stub
-└── llm.py             # ollama / none
-scripts/helpdesk_triage.yaml   # sample legitimate script
+├── __main__.py            # entrypoint (python -m xcall_agent --config config.yaml)
+├── config.py              # config loading + defaults (env overrides: XCALL__SECTION__KEY)
+├── esl_client.py          # FreeSWITCH Event Socket client
+├── orchestrator.py        # VoiceAgent: drives parked calls (script mode)
+├── conversational.py      # ConversationalVoiceAgent (assistant mode, LLM + tools)
+├── llm_chat.py            # OpenAI-compatible / Ollama chat client (with tool calls)
+├── assistant_config.py    # loads assistant config (portal API or local JSON)
+├── script_engine.py       # YAML script state machine
+├── stt.py                 # whisper / vosk / stub
+├── tts.py                 # piper / espeak / stub
+└── llm.py                 # ollama / none (classification fallback)
+scripts/helpdesk_triage.yaml   # sample legitimate script (script mode)
+assistant.example.json         # sample assistant config (assistant mode)
 tests/                          # unit + mock-ESL end-to-end tests
 ```
 

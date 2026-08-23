@@ -65,10 +65,12 @@ services:
     depends_on:
       - freeswitch
     environment:
-      ESL_HOST: freeswitch
-      ESL_PORT: "8021"
-      ESL_PASSWORD: ${ESL_PASSWORD:-ClueCon}
-      AGENT_SCRIPT: /app/scripts/helpdesk_triage.yaml
+      XCALL__ESL__HOST: ${ESL_HOST:-freeswitch}
+      XCALL__ESL__PORT: ${ESL_PORT:-8021}
+      XCALL__ESL__PASSWORD: ${ESL_PASSWORD:-ClueCon}
+      XCALL__AGENT__MODE: ${AGENT_MODE:-script}
+      XCALL__ASSISTANT__PORTAL_URL: ${PORTAL_URL:-http://portal/ai-assistant/assistant_api.php}
+      XCALL__ASSISTANT__PORTAL_SECRET: ${PORTAL_SECRET:-}
       STT_ENGINE: ${STT_ENGINE:-stub}
       TTS_ENGINE: ${TTS_ENGINE:-stub}
       LLM_ENGINE: ${LLM_ENGINE:-none}

@@ -55,8 +55,23 @@ install -m 644 "$WEBPHONE/config.php" "$FUSIONPBX_DIR/webphone/config.php"
 install -m 644 "$WEBPHONE/vendor/sip.min.js" "$FUSIONPBX_DIR/webphone/vendor/sip.min.js"
 echo "   installed web softphone at /webphone"
 
-# 5. permissions ------------------------------------------------------- #
-chown -R www-data:www-data "$FUSIONPBX_DIR/webphone" "$IMG_DIR/xcall.css" 2>/dev/null || true
+# 5. AI assistant manager ---------------------------------------------- #
+AIASSISTANT="$SCRIPT_DIR/../ai-assistant"
+if [ -d "$AIASSISTANT" ]; then
+    install -d "$FUSIONPBX_DIR/ai-assistant"
+    install -m 644 "$AIASSISTANT"/*.php    "$FUSIONPBX_DIR/ai-assistant/"
+    install -m 644 "$AIASSISTANT"/*.css    "$FUSIONPBX_DIR/ai-assistant/"
+    install -m 644 "$AIASSISTANT"/*.js     "$FUSIONPBX_DIR/ai-assistant/"
+    echo "   installed AI assistant manager at /ai-assistant"
+    if command -v psql >/dev/null 2>&1; then
+        psql -U "$DB_USER" -f "$AIASSISTANT/schema.sql" fusionpbx \
+          && echo "   applied AI assistant schema" \
+          || echo "   WARNING: AI assistant schema not applied (run schema.sql manually)"
+    fi
+fi
+
+# 6. permissions ------------------------------------------------------- #
+chown -R www-data:www-data "$FUSIONPBX_DIR/webphone" "$FUSIONPBX_DIR/ai-assistant" "$IMG_DIR/xcall.css" 2>/dev/null || true
 
 echo
 echo "Done. Next steps:"

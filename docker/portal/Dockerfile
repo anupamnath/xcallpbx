@@ -13,9 +13,10 @@ FROM fusionpbx/fusionpbx:latest
 
 USER root
 
-# Copy the XCall web softphone + brand assets
-COPY portal/webphone/ /var/www/fusionpbx/webphone/
-COPY portal/assets/   /var/www/fusionpbx/themes/default/images/
+# Copy the XCall web softphone + brand assets + AI assistant manager
+COPY portal/webphone/     /var/www/fusionpbx/webphone/
+COPY portal/ai-assistant/ /var/www/fusionpbx/ai-assistant/
+COPY portal/assets/       /var/www/fusionpbx/themes/default/images/
 
 # Rebrand bootstrap script (applies DB brand settings after install)
 COPY docker/portal/rebrand-on-boot.sh /usr/local/bin/rebrand-on-boot.sh

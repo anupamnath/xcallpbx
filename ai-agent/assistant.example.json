@@ -1,0 +1,22 @@
+{
+  "assistant": {
+    "assistant_name": "Demo Support Assistant",
+    "assistant_greeting": "Hello, thank you for calling {company_name}. My name is Alex, how can I help you today?",
+    "assistant_instructions": "You are a helpful customer support agent for {company_name}. Be polite, concise, and speak naturally. Help the caller with common questions. If you cannot resolve the issue, or if the caller asks for a human, call transfer_to_specialist. If the conversation is finished, call hang_up. If the caller asks you to wait or hold on, call skip_turn.",
+    "assistant_provider": "openai",
+    "assistant_model": "gpt-4o-mini",
+    "assistant_api_key_enc": "",
+    "assistant_api_base_url": "https://api.openai.com/v1",
+    "assistant_temperature": 0.7,
+    "assistant_max_tokens": 1024,
+    "assistant_voice": "default",
+    "assistant_language": "en",
+    "assistant_stt_engine": "stub",
+    "assistant_tts_engine": "stub",
+    "assistant_handoff_extension": "7000",
+    "assistant_handoff_message": "Please hold the line, I will connect you to a specialist.",
+    "assistant_max_call_seconds": 900,
+    "assistant_silence_retries": 2,
+    "assistant_enabled": true
+  }
+}

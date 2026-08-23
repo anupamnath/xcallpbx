@@ -1,8 +1,14 @@
 # XCall — AI Agent Guide
 
-The AI agent answers inbound calls, runs a **scripted conversation**, and at
-the script's handoff node plays "please hold" then transfers the caller to a
-human specialist. It never places outbound calls on its own.
+The AI agent answers inbound calls and either:
+
+- **assistant mode** (recommended) — the **LLM runs the conversation** using the
+  assistant you configure in the portal (`/ai-assistant/`): your context,
+  model provider (API key or local machine), voice, and handoff settings. The
+  LLM decides when to say "please hold" and transfer to a human specialist.
+- **script mode** — follows a YAML state machine (the original behaviour).
+
+It never places outbound calls on its own.
 
 ## Quick start (stub engines)
 
@@ -121,6 +127,58 @@ llm:
 ```
 If the LLM is unreachable, the agent falls back to keyword matching
 (`fallback_to_keywords: true`).
+
+
+## Assistant mode (LLM-driven conversations)
+
+This is the recommended mode: you configure everything from the portal's
+**AI Assistants** page (`/ai-assistant/assistants.php`) and the agent uses it
+on calls.
+
+### Configure the agent for assistant mode
+
+```yaml
+agent:
+  mode: "assistant"          # instead of "script"
+
+assistant:
+  # production: fetch from the portal (secret = v_xcall_settings.agent_shared_secret)
+  portal_url: "https://portal.example.com/ai-assistant/assistant_api.php"
+  portal_secret: "<secret>"
+  # OR offline/test: a local JSON file (see assistant.example.json)
+  # assistant_file: "assistant.example.json"
+```
+
+Run it:
+
+```bash
+python -m xcall_agent --config config.yaml          # assistant mode
+python -m xcall_agent --config config.yaml --dry-run
+```
+
+### How a call plays out
+
+1. Caller rings the AI extension → FreeSWITCH parks the leg.
+2. The agent plays the assistant's **greeting**.
+3. Loop: record the caller → STT → send to the LLM (with your **instructions/
+   context** as the system prompt) → speak the reply → repeat.
+4. The LLM can call three tools:
+   - `transfer_to_specialist` — plays the hold message, then
+     `uuid_transfer <uuid> <ext> xml default` to the specialist.
+   - `hang_up` — ends the call politely.
+   - `skip_turn` — stays silent (e.g. caller said "one moment").
+
+The context you write in the portal is what makes the assistant behave
+correctly — e.g. "…if you cannot resolve the issue, call
+transfer_to_specialist", "…be concise", "…never ask for a card number".
+
+### Providers
+
+Any of: OpenAI, Anthropic, Gemini, Groq, an OpenAI-compatible endpoint, or
+**local Ollama** (base URL to your machine, no API key). API keys are
+encrypted at rest in the portal DB (AES-256-GCM) and delivered to the agent
+over the authenticated `agent_config` endpoint.
+
 
 ## Integration with FreeSWITCH
 

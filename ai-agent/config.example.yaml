@@ -16,8 +16,18 @@ agent:
   # A channel variable set on the parked leg so the agent can identify its calls.
   identify_var: "xcall_agent"
   identify_value: "true"
+  # Conversation engine: script (YAML state machine) | assistant (LLM from portal)
+  mode: "script"
 
-# Conversation script (YAML state machine).
+# Assistant mode source (used when agent.mode = "assistant").
+# Either point at a local JSON file (offline/test) OR at the XCall portal API
+# (production). The portal holds the assistant config + encrypted API key.
+assistant:
+  assistant_file: ""                # e.g. /opt/xcall/ai-agent/assistant.json
+  portal_url: ""                    # e.g. https://portal.example.com/ai-assistant/assistant_api.php
+  portal_secret: ""                 # shared secret from v_xcall_settings.agent_shared_secret
+
+# Conversation script (YAML state machine) — used when agent.mode = "script".
 script:
   file: "scripts/helpdesk_triage.yaml"
 

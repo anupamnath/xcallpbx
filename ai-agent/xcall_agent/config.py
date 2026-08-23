@@ -25,7 +25,18 @@ except ImportError:  # pragma: no cover
 # --------------------------------------------------------------------------- #
 DEFAULTS: dict = {
     "esl": {"host": "127.0.0.1", "port": 8021, "password": "ClueCon", "acl": "127.0.0.1"},
-    "agent": {"context": "xcall_ai", "identify_var": "xcall_agent", "identify_value": "true"},
+    "agent": {
+        "context": "xcall_ai",
+        "identify_var": "xcall_agent",
+        "identify_value": "true",
+        "mode": "script",           # script | assistant
+    },
+    "assistant": {
+        # Local JSON file (testing / offline) OR portal API (production).
+        "assistant_file": "",        # e.g. /opt/xcall/ai-agent/assistant.json
+        "portal_url": "",            # e.g. https://portal.example.com/ai-assistant/assistant_api.php
+        "portal_secret": "",         # shared secret stored in v_xcall_settings
+    },
     "script": {"file": "scripts/helpdesk_triage.yaml"},
     "stt": {
         "engine": "stub",          # whisper | vosk | stub
@@ -90,6 +101,7 @@ class Config:
             else:  # pragma: no cover
                 user = _parse_simple_yaml(path)
             _deep_merge(data, user)
+        _apply_env_overrides(data)
         return cls(data=data)
 
     # ------------------------------------------------------------------ #
@@ -108,6 +120,10 @@ class Config:
     @property
     def agent(self) -> dict:
         return self.data["agent"]
+
+    @property
+    def assistant(self) -> dict:
+        return self.data.get("assistant", {})
 
     @property
     def script(self) -> dict:
@@ -157,6 +173,24 @@ def _deep_merge(base: dict, override: dict) -> None:
             _deep_merge(base[key], value)
         else:
             base[key] = value
+
+
+# Environment variables that override config for containerized deploys.
+# Format: XCALL__<SECTION>__<KEY>  (e.g. XCALL__ESL__HOST, XCALL__ASSISTANT__PORTAL_URL)
+def _apply_env_overrides(data: dict) -> None:
+    import os as _os
+
+    prefix = "XCALL__"
+    for key, value in _os.environ.items():
+        if not key.startswith(prefix):
+            continue
+        parts = key[len(prefix):].lower().split("__")
+        if len(parts) != 2:
+            continue
+        section, k = parts
+        if section in data and k in data[section]:
+            data[section][k] = _coerce(value)
+
 
 
 def _parse_simple_yaml(path: str) -> dict:  # pragma: no cover

@@ -32,4 +32,7 @@ RUN mkdir -p /app/ai-agent/tts_cache /var/spool/xcall/recordings \
 # default config (copy example; operators can mount their own config.yaml)
 RUN cp /app/ai-agent/config.example.yaml /app/ai-agent/config.yaml
 
+# allow the AI assistant mode to read its config from a mounted file
+VOLUME ["/app/ai-agent/config.yaml", "/app/ai-agent/assistant.json"]
+
 CMD ["python", "-m", "xcall_agent", "--config", "/app/ai-agent/config.yaml"]

@@ -12,6 +12,10 @@ agent:
   context: "xcall_ai"
   identify_var: "xcall_agent"
   identify_value: "true"
+  mode: "assistant"
+
+assistant:
+  assistant_file: "assistant.example.json"
 
 script:
   file: "scripts/helpdesk_triage.yaml"
@@ -47,3 +51,4 @@ timing:
 logging:
   level: "INFO"
   file: "logs/xcall-agent.log"
+

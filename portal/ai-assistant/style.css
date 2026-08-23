@@ -1,0 +1,95 @@
+/* XCall AI Assistant — portal styles.
+   A clean, Telnyx-inspired interface: dark sidebar, light content,
+   card-based list, and a tabbed edit form. */
+
+:root {
+  --x-c-bg: #0f172a;
+  --x-c-surface: #1e293b;
+  --x-c-border: #e2e8f0;
+  --x-c-text: #0f172a;
+  --x-c-muted: #64748b;
+  --x-c-accent: #6366f1;
+  --x-c-accent-hover: #4f46e5;
+  --x-c-cyan: #22d3ee;
+  --x-c-ok: #16a34a;
+  --x-c-warn: #d97706;
+  --x-c-err: #dc2626;
+  --x-c-bg-light: #f8fafc;
+}
+
+* { box-sizing: border-box; }
+body.xcall-ai { margin: 0; background: var(--x-c-bg-light); color: var(--x-c-text); font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+
+/* ---- layout ---- */
+.xcall-shell { display: flex; min-height: 100vh; }
+.xcall-sidebar { width: 240px; background: var(--x-c-bg); color: #cbd5e1; flex-shrink: 0; padding: 16px 0; }
+.xcall-main { flex: 1; padding: 24px 32px; max-width: 1100px; }
+
+.xcall-brand { display: flex; align-items: center; gap: 10px; padding: 0 20px 18px; border-bottom: 1px solid #1e293b; }
+.xcall-brand .mark { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, var(--x-c-cyan), var(--x-c-accent)); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; }
+.xcall-brand .name { font-weight: 700; color: #fff; letter-spacing: .5px; }
+
+.xcall-nav { margin-top: 12px; }
+.xcall-nav .nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; padding: 12px 20px 6px; }
+.xcall-nav a { display: block; padding: 8px 20px; color: #cbd5e1; text-decoration: none; font-size: 14px; }
+.xcall-nav a:hover { background: #1e293b; color: #fff; }
+.xcall-nav a.active { background: #1e293b; color: var(--x-c-cyan); border-left: 3px solid var(--x-c-cyan); }
+
+/* ---- topbar ---- */
+.xcall-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.xcall-topbar h1 { font-size: 22px; margin: 0; }
+
+/* ---- buttons ---- */
+.xcall-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid transparent; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.xcall-btn-primary { background: var(--x-c-accent); color: #fff; }
+.xcall-btn-primary:hover { background: var(--x-c-accent-hover); }
+.xcall-btn-outline { background: #fff; border-color: #cbd5e1; color: var(--x-c-text); }
+.xcall-btn-outline:hover { border-color: var(--x-c-accent); color: var(--x-c-accent); }
+.xcall-btn-danger { background: #fff; border-color: #fca5a5; color: var(--x-c-err); }
+.xcall-btn-danger:hover { background: #fef2f2; }
+.xcall-btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* ---- list ---- */
+.xcall-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.xcall-card { background: #fff; border: 1px solid var(--x-c-border); border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.xcall-card .card-title { font-size: 16px; font-weight: 700; margin: 0 0 4px; }
+.xcall-card .card-meta { color: var(--x-c-muted); font-size: 13px; margin-bottom: 12px; }
+.xcall-card .card-actions { display: flex; gap: 8px; }
+.xcall-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.xcall-badge-ok { background: #dcfce7; color: #166534; }
+.xcall-badge-off { background: #f1f5f9; color: #64748b; }
+
+/* ---- tabs ---- */
+.xcall-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--x-c-border); margin-bottom: 20px; }
+.xcall-tabs button { background: none; border: none; padding: 10px 14px; font-size: 14px; color: var(--x-c-muted); cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600; }
+.xcall-tabs button.active { color: var(--x-c-accent); border-bottom-color: var(--x-c-accent); }
+
+/* ---- form ---- */
+.xcall-form { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
+.xcall-field { display: flex; flex-direction: column; gap: 6px; }
+.xcall-field label { font-size: 13px; font-weight: 600; }
+.xcall-field .hint { font-size: 12px; color: var(--x-c-muted); }
+.xcall-field input[type=text], .xcall-field input[type=password], .xcall-field input[type=number], .xcall-field select, .xcall-field textarea {
+  padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; font-family: inherit; width: 100%;
+}
+.xcall-field input:focus, .xcall-field select:focus, .xcall-field textarea:focus { outline: none; border-color: var(--x-c-accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+.xcall-field textarea { min-height: 90px; resize: vertical; }
+.xcall-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.xcall-grid .full { grid-column: 1 / -1; }
+.xcall-toggle { display: flex; align-items: center; gap: 10px; }
+.xcall-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+
+/* ---- toast ---- */
+.xcall-toast { position: fixed; right: 20px; bottom: 20px; padding: 12px 18px; border-radius: 10px; color: #fff; font-size: 14px; opacity: 0; transform: translateY(8px); transition: all .2s; z-index: 999; }
+.xcall-toast.show { opacity: 1; transform: translateY(0); }
+.xcall-toast.ok { background: var(--x-c-ok); }
+.xcall-toast.err { background: var(--x-c-err); }
+
+/* ---- empty state ---- */
+.xcall-empty { text-align: center; padding: 60px 20px; color: var(--x-c-muted); }
+.xcall-empty h3 { color: var(--x-c-text); margin-bottom: 6px; }
+
+@media (max-width: 720px) {
+  .xcall-sidebar { display: none; }
+  .xcall-grid { grid-template-columns: 1fr; }
+}
