@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    XCall — directory / extension definitions.
+
+    The specialist extension 7000 registers on the internal SIP profile and is
+    reached by the AI agent at handoff. In a FusionPBX-managed deployment these
+    users are created through the XCall portal instead; this file documents the
+    mapping and provides a working default for a bare FreeSWITCH setup.
+
+    The web softphone logs in with user/password (e.g. specialist / Specialist1)
+    over WebRTC (verto or SIP over WSS).
+-->
+<include>
+    <domain name="$${domain}">
+        <params>
+            <param name="dial-string" value="{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})}"/>
+        </params>
+
+        <groups>
+            <group name="default">
+                <users>
+
+                    <!-- Human specialist (receives the agent's handoff). -->
+                    <user id="7000">
+                        <params>
+                            <param name="password" value="Specialist1"/>
+                        </params>
+                        <variables>
+                            <variable name="user_context" value="default"/>
+                            <variable name="effective_caller_id_name" value="XCall Specialist"/>
+                            <variable name="effective_caller_id_number" value="7000"/>
+                        </variables>
+                    </user>
+
+                </users>
+            </group>
+        </groups>
+    </domain>
+</include>

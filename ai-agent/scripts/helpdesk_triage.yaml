@@ -1,0 +1,81 @@
+# XCall AI agent — sample conversation script.
+#
+# A clean, legitimate IT helpdesk triage flow that exercises the full
+# architecture:
+#   greeting -> gather info -> route by issue type -> hold -> hand off to a
+#   human specialist (extension 7000).
+#
+# Node fields:
+#   prompt : line the agent speaks ({var} placeholders are templated)
+#   collect: key to store the caller's answer under in session context
+#   branches : branch map; keys are intents, values are {"keywords": [...], "next": "node"}
+#            "_fallback" is the default branch (no keyword matched)
+#   next   : explicit next node (overrides file order)
+#   action : {"type": "handoff"} transfers to a human; {"type": "hangup"} ends the call
+#   wait   : false -> do not pause for caller input (e.g. hold music line)
+
+meta:
+  company: "Acme Corp"
+  support_name: "IT Helpdesk"
+
+start: greeting
+
+nodes:
+  greeting:
+    prompt: >
+      Thank you for calling {company} {support_name}. This is Aiden.
+      Please can you tell me briefly what you are calling about today?
+    collect: issue
+
+  confirm_issue:
+    prompt: >
+      Thank you. So I have noted that your issue relates to {issue}.
+      Just to confirm, is that correct?
+    branches:
+      yes:
+        keywords: [yes, yeah, correct, right, exactly, yep, sure]
+        next: triage
+      _fallback:
+        next: confirm_issue
+
+  triage:
+    prompt: >
+      No problem at all. Is this about your computer or laptop, your phone,
+      or an email or account problem?
+    branches:
+      hardware:
+        keywords: [computer, laptop, pc, desktop, printer, hardware, machine]
+        next: hardware_details
+      phone:
+        keywords: [phone, mobile, iphone, android, tablet]
+        next: account_verify
+      email:
+        keywords: [email, account, password, login, mail, outlook]
+        next: account_verify
+      _fallback:
+        next: triage
+
+  hardware_details:
+    prompt: >
+      Thank you. What kind of computer is it, and can you tell me the brand?
+    collect: device
+    next: account_verify
+
+  account_verify:
+    prompt: >
+      I will need to verify your account before I can make changes.
+      Please can you confirm the email address you use to sign in?
+    collect: email
+    next: hold_and_transfer
+
+  hold_and_transfer:
+    prompt: >
+      Thank you very much. I have gathered all the details I need.
+      Please hold the line for a moment while I check this with a specialist.
+    wait: false
+    action:
+      type: handoff
+      destination: "7000"
+      context: default
+      message: >
+        Please hold the line, I am now connecting you to a senior specialist.

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XCall Softphone</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" class="phone">
+  <header class="phone-header">
+    <div class="brand">
+      <span class="brand-mark">X</span>
+      <span class="brand-name">XCall</span>
+    </div>
+    <div class="status" id="status">Connecting…</div>
+  </header>
+
+  <section class="caller" id="callerPanel">
+    <div class="caller-name" id="callerName">—</div>
+    <div class="caller-number" id="callerNumber">—</div>
+    <div class="caller-duration" id="callDuration">00:00</div>
+  </section>
+
+  <section class="dialpad" id="dialpad">
+    <input id="numberInput" type="tel" autocomplete="off"
+           placeholder="Enter extension or number" enterkeyhint="call">
+    <div class="keys">
+      <button class="key" data-d="1">1</button>
+      <button class="key" data-d="2">2</button>
+      <button class="key" data-d="3">3</button>
+      <button class="key" data-d="4">4</button>
+      <button class="key" data-d="5">5</button>
+      <button class="key" data-d="6">6</button>
+      <button class="key" data-d="7">7</button>
+      <button class="key" data-d="8">8</button>
+      <button class="key" data-d="9">9</button>
+      <button class="key" data-d="*">*</button>
+      <button class="key" data-d="0">0</button>
+      <button class="key" data-d="#">#</button>
+    </div>
+  </section>
+
+  <section class="controls" id="controls">
+    <button id="callBtn" class="btn btn-call" title="Make a call">&#128222;</button>
+    <button id="hangupBtn" class="btn btn-hangup hidden" title="Hang up">&#128263;</button>
+    <button id="muteBtn" class="btn btn-mute" title="Mute">&#128263;</button>
+    <button id="holdBtn" class="btn btn-hold" title="Hold / Resume">&#9199;</button>
+  </section>
+
+  <section class="log" id="logPanel">
+    <div id="log"></div>
+  </section>
+</div>
+
+<script src="vendor/sip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

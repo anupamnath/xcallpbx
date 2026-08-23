@@ -1,0 +1,19 @@
+# XCall AI agent dependencies
+#
+# Core:
+#   - PyYAML: script + config files
+#   - (optional) faster-whisper / vosk: local STT
+#   - (optional) numpy: fast audio math for VAD (falls back to stdlib)
+#
+# TTS engines run as external binaries (piper / espeak-ng), LLM via HTTP
+# (ollama). No cloud services are contacted.
+
+# core
+PyYAML>=6.0
+
+# optional but recommended for the STT path
+numpy>=1.24
+
+# optional local speech recognition
+# faster-whisper>=1.0.0   # uncomment when using STT engine=whisper
+# vosk>=0.3.45            # uncomment when using STT engine=vosk

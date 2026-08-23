@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Runtime artifacts
+tts_cache/
+logs/
+*.log
+recordings/
+
+# Local AI models / caches
+models/
+.ai-models/
+
+# Node
+node_modules/
+
+# Env / secrets
+.env
+*.env.local
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Reference clones (research only, not part of the deliverable)
+freeswitch-src/
+fusionpbx-src/
+
+# Test/build artifacts
+dist/
+build/
+*.wav

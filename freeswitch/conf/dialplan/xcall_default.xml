@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    XCall — default context extensions used by the system.
+
+    - Specialist extension (e.g. 7000): rings the human specialist. The AI
+      agent transfers the caller here at the handoff point. The specialist
+      answers on their web softphone.
+    - Test echo / time for verifying the PBX works.
+-->
+<include>
+    <context name="default">
+
+        <!-- Specialist: answer for a human agent (web softphone or SIP device). -->
+        <extension name="xcall_specialist">
+            <condition field="destination_number" expression="^${xcall_specialist_extension}$">
+                <action application="ring_ready"/>
+                <action application="set" data="hangup_after_bridge=true"/>
+                <action application="bridge" data="user/${xcall_specialist_extension}@${domain}"/>
+                <action application="answer"/>
+                <action application="playback" data="${sound_prefix}/ivr/ivr-welcome_to_freeswitch.wav"/>
+                <action application="voicemail" data="default ${domain} ${xcall_specialist_extension}"/>
+            </condition>
+        </extension>
+
+        <!-- General internal extension routing (any registered user). -->
+        <extension name="xcall_internal">
+            <condition field="destination_number" expression="^(\d{2,7})$">
+                <action application="ring_ready"/>
+                <action application="set" data="hangup_after_bridge=true"/>
+                <action application="bridge" data="user/$1@${domain}"/>
+            </condition>
+        </extension>
+
+        <!-- Echo test extension (handy while setting up the web softphone). -->
+        <extension name="xcall_echo">
+            <condition field="destination_number" expression="^(9196)$">
+                <action application="answer"/>
+                <action application="echo"/>
+            </condition>
+        </extension>
+
+        <!-- Time-of-day (quick sanity check). -->
+        <extension name="xcall_time">
+            <condition field="destination_number" expression="^(9197)$">
+                <action application="answer"/>
+                <action application="speak" data="en-us cepstral|ALLISON|CURRENT_DATE_TIME"/>
+            </condition>
+        </extension>
+
+    </context>
+</include>

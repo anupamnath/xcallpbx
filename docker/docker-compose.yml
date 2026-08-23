@@ -1,0 +1,103 @@
+# XCall — full-stack deployment (Docker Compose).
+#
+#   cp .env.example .env   # edit secrets
+#   docker compose up -d --build
+#
+# Services:
+#   freeswitch  — media/telephony engine (SIP, WebRTC/verto, ESL)
+#   portal      — XCall portal (rebranded FusionPBX) + web softphone
+#   ai-agent    — the Python voice agent (drives parked calls over ESL)
+#   nginx       — TLS reverse proxy: portal (https) + WSS (verto) + ESL
+#
+# See ../docs/SETUP.md for the step-by-step guide.
+
+name: xcall
+
+x-common: &common
+  restart: unless-stopped
+  networks: [xcall-net]
+
+services:
+
+  freeswitch:
+    <<: *common
+    build:
+      context: ..
+      dockerfile: docker/freeswitch/Dockerfile
+    container_name: xcall-freeswitch
+    hostname: freeswitch
+    # SIP (TCP/UDP), verto (WS/WSS), ESL, RTP
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "5080:5080/udp"
+      - "8081:8081"
+      - "8082:8082"
+      - "8021:8021"
+      - "16384-16484:16384-16484/udp"
+    volumes:
+      - xcall-recordings:/var/spool/xcall/recordings
+      - xcall-tts:/var/spool/xcall/tts
+      - xcall-fs-cert:/etc/freeswitch/tls
+
+  portal:
+    <<: *common
+    build:
+      context: ..
+      dockerfile: docker/portal/Dockerfile
+    container_name: xcall-portal
+    hostname: portal
+    volumes:
+      - xcall-pgdata:/var/lib/postgresql/data
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      FUSIONPBX_ADMIN_USER: ${FUSIONPBX_ADMIN_USER:-admin}
+      FUSIONPBX_ADMIN_PASSWORD: ${FUSIONPBX_ADMIN_PASSWORD:?set FUSIONPBX_ADMIN_PASSWORD in .env}
+    # the portal container runs nginx+php-fpm+postgres internally for simplicity
+
+  ai-agent:
+    <<: *common
+    build:
+      context: ..
+      dockerfile: docker/ai-agent/Dockerfile
+    container_name: xcall-ai-agent
+    hostname: ai-agent
+    depends_on:
+      - freeswitch
+    environment:
+      ESL_HOST: freeswitch
+      ESL_PORT: "8021"
+      ESL_PASSWORD: ${ESL_PASSWORD:-ClueCon}
+      AGENT_SCRIPT: /app/scripts/helpdesk_triage.yaml
+      STT_ENGINE: ${STT_ENGINE:-stub}
+      TTS_ENGINE: ${TTS_ENGINE:-stub}
+      LLM_ENGINE: ${LLM_ENGINE:-none}
+    volumes:
+      - xcall-tts:/app/tts_cache
+      - xcall-recordings:/var/spool/xcall/recordings
+
+  nginx:
+    <<: *common
+    image: nginx:1.27-alpine
+    container_name: xcall-nginx
+    hostname: nginx
+    depends_on:
+      - portal
+      - freeswitch
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/xcall.conf:/etc/nginx/conf.d/xcall.conf:ro
+      - xcall-cert:/etc/nginx/certs:ro
+
+volumes:
+  xcall-recordings:
+  xcall-tts:
+  xcall-fs-cert:
+  xcall-pgdata:
+  xcall-cert:
+
+networks:
+  xcall-net:
+    driver: bridge

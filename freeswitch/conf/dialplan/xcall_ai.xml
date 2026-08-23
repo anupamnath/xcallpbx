@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    XCall — AI agent context.
+
+    Inbound calls that should be handled by the AI voice agent arrive in the
+    "xcall_ai" context. The dialplan answers the call, marks it as an agent
+    call (channel variable), sets up recording, and parks it. The Python agent
+    (ai-agent/) watches ESL for CHANNEL_PARK events in this context, then
+    drives the conversation: TTS prompt -> record -> STT -> next -> handoff.
+
+    The parked leg is what uuid_transfer moves to the specialist on handoff.
+-->
+<include>
+    <context name="xcall_ai">
+
+        <!--
+            A call to the AI extension (e.g. 5000) — used for testing the
+            agent directly from the web softphone.
+        -->
+        <extension name="xcall_ai_extension">
+            <condition field="destination_number" expression="^${xcall_ai_extension}$">
+                <action application="set" data="xcall_agent=true"/>
+                <action application="set" data="xcall_agent_context=${xcall_ai_context}"/>
+                <action application="answer"/>
+                <action application="sleep" data="200"/>
+                <action application="park"/>
+            </condition>
+        </extension>
+
+        <!--
+            A catch-all: any call that lands in this context (e.g. routed here
+            from an inbound dialplan for the main number) is treated as an AI
+            agent call. This makes it easy to point your DID/trunk at the bot.
+        -->
+        <extension name="xcall_ai_catchall">
+            <condition>
+                <action application="set" data="xcall_agent=true"/>
+                <action application="set" data="xcall_agent_context=${xcall_ai_context}"/>
+                <action application="answer"/>
+                <action application="sleep" data="200"/>
+                <action application="park"/>
+            </condition>
+        </extension>
+
+        <!--
+            If the call was already transferred to the specialist (a human), it
+            leaves this context via uuid_transfer to the default context, so the
+            catch-all must not re-park it. The specialist extension lives in the
+            default context and is dialed as "${xcall_specialist_extension}".
+        -->
+
+    </context>
+</include>

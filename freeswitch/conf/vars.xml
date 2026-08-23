@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    XCall — FreeSWITCH global variables.
+
+    Deploy alongside the standard FreeSWITCH conf tree (this file overlays
+    conf/vars.xml). Adjust the domain / IPs to your deployment.
+-->
+<include>
+
+    <!-- Default SIP domain (used by internal extensions and the web softphone). -->
+    <X-PRE-PROCESS cmd="set" data="domain=$${local_ip_v4}"/>
+    <!-- <X-PRE-PROCESS cmd="set" data="domain=xcall.example.com"/> -->
+
+    <!-- Public SIP ports -->
+    <X-PRE-PROCESS cmd="set" data="internal_sip_port=5060"/>
+    <X-PRE-PROCESS cmd="set" data="external_sip_port=5080"/>
+    <X-PRE-PROCESS cmd="set" data="internal_tls_port=5061"/>
+    <X-PRE-PROCESS cmd="set" data="external_tls_port=5081"/>
+
+    <!-- WebRTC (verto) -->
+    <X-PRE-PROCESS cmd="set" data="verto_port=8081"/>
+    <X-PRE-PROCESS cmd="set" data="verto_port_secure=8082"/>
+    <X-PRE-PROCESS cmd="set" data="verto_ssl_certdir=$${base_dir}/conf/ssl"/>
+
+    <!-- Codecs -->
+    <X-PRE-PROCESS cmd="set" data="global_codec_prefs=OPUS,G722,PCMU,PCMA,VP8"/>
+    <X-PRE-PROCESS cmd="set" data="outbound_codec_prefs=OPUS,G722,PCMU,PCMA,VP8"/>
+
+    <!-- Media -->
+    <X-PRE-PROCESS cmd="set" data="sound_prefix=$${sounds_dir}/en/us/callie"/>
+    <X-PRE-PROCESS cmd="set" data="hold_music=$${moh_file}"/>
+    <X-PRE-PROCESS cmd="set" data="moh_file=$${sounds_dir}/music/8000/suite-esque/8000/ivr-misc-8.wav"/>
+
+    <!-- Recordings for the AI agent (must be writable by the freeswitch user). -->
+    <X-PRE-PROCESS cmd="set" data="xcall_recordings_dir=/var/spool/xcall/recordings"/>
+
+    <!-- AI agent: the extension that an inbound call is transferred/parked on.
+         FreeSWITCH parks the leg here; the Python agent drives it over ESL. -->
+    <X-PRE-PROCESS cmd="set" data="xcall_ai_extension=5000"/>
+    <X-PRE-PROCESS cmd="set" data="xcall_ai_context=xcall_ai"/>
+
+    <!-- Specialist: the human extension the agent transfers to at handoff. -->
+    <X-PRE-PROCESS cmd="set" data="xcall_specialist_extension=7000"/>
+
+    <!-- TTS cache / agent prompts live under here (mounted into the container). -->
+    <X-PRE-PROCESS cmd="set" data="xcall_tts_dir=/var/spool/xcall/tts"/>
+
+</include>

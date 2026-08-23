@@ -1,0 +1,86 @@
+# XCall AI Agent configuration.
+# Copy to config.yaml and edit for your deployment.
+
+# FreeSWITCH ESL (mod_event_socket) connection.
+esl:
+  host: "127.0.0.1"
+  port: 8021
+  password: "ClueCon"          # change in /etc/freeswitch/autoload_configs/event_socket.conf.xml
+  acl: "127.0.0.1"             # only connect from allowed hosts (see event_socket ACLs)
+
+# The extension / context the agent serves.
+# FreeSWITCH parks calls into the "xcall_ai" context; the agent watches for
+# CHANNEL_PARK on the xcall_ai context and takes over the call.
+agent:
+  context: "xcall_ai"
+  # A channel variable set on the parked leg so the agent can identify its calls.
+  identify_var: "xcall_agent"
+  identify_value: "true"
+
+# Conversation script (YAML state machine).
+script:
+  file: "scripts/helpdesk_triage.yaml"
+
+# Speech to text.
+stt:
+  engine: "whisper"           # whisper | vosk | stub
+  model: "base"               # faster-whisper model: tiny|base|small|medium
+  device: "cpu"
+  compute_type: "int8"
+  language: "en"
+
+# Text to speech.
+tts:
+  engine: "piper"             # piper | espeak | stub
+  voice: "en_US-lessac-medium"
+  piper_path: "piper"         # path to piper binary
+  piper_model: "models/en_US-lessac-medium.onnx"
+  # Cache generated wav files on disk to keep latency low on repeat prompts.
+  cache_dir: "tts_cache"
+  sample_rate: 16000
+
+# Large language model (used for response classification / free-form handling).
+llm:
+  engine: "ollama"            # ollama | none
+  base_url: "http://127.0.0.1:11434"
+  model: "llama3.1"
+  temperature: 0.1
+  # If the LLM is unreachable, the agent falls back to keyword matching.
+  fallback_to_keywords: true
+
+# Call recording of the conversation (for QA / compliance).
+recording:
+  enabled: true
+  dir: "/var/spool/xcall/recordings"
+  stereo: false
+  # Record both the agent prompt and the caller (true), or only the caller (false).
+  record_agent_audio: true
+
+# Handoff to human specialist.
+handoff:
+  # This extension is dialed (via transfer) when the script reaches its
+  # "forward to a specialist" node. Ring the specialist's web softphone.
+  destination_ext: "7000"
+  context: "default"
+  # Prompt the caller is given right before the transfer.
+  hold_message: "Thank you for holding. I will now connect you to a specialist."
+  # Ring for this many seconds before giving up / replaying.
+  ring_timeout: 25
+
+# Timeouts and limits (seconds).
+timing:
+  # How long the agent waits for the caller to start speaking before prompting again.
+  no_speech_retries: 2
+  # How long the caller is allowed to speak in a single utterance before STT runs.
+  max_utterance_seconds: 15
+  # Silence at the end of an utterance (seconds) that ends the recording.
+  end_of_speech_silence: 1.2
+  # VAD energy threshold (0-32767); raise if background noise triggers false speech.
+  vad_threshold: 800
+  # Overall call timeout - if the conversation runs longer, hang up gracefully.
+  max_call_seconds: 900
+
+# Logging.
+logging:
+  level: "INFO"               # DEBUG | INFO | WARNING | ERROR
+  file: "logs/xcall-agent.log"

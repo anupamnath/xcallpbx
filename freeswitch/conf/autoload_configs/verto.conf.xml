@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    XCall — verto (WebRTC) configuration.
+
+    The XCall web softphone registers over the verto WebSocket, so clients can
+    make/receive calls right from the browser after logging into the portal.
+
+    - insecure (ws) on ${verto_port}  (8081)
+    - secure   (wss) on ${verto_port_secure} (8082), needs certificates
+
+    The portal reverse proxy (nginx/caddy) can also terminate TLS and forward
+    to the insecure port.
+-->
+<configuration name="verto.conf" description="Verto WebSocket">
+    <settings>
+        <param name="debug" value="0"/>
+        <param name="sessions" value="1000"/>
+        <param name="max-sessions" value="1000"/>
+    </settings>
+    <profiles>
+        <profile name="xcall">
+            <param name="enabled" value="true"/>
+            <param name="ip" value="0.0.0.0"/>
+            <param name="port" value="$${verto_port}"/>
+            <param name="secure-port" value="$${verto_port_secure}"/>
+            <param name="ssl-certificate" value="$${verto_ssl_certdir}/wss.pem"/>
+            <param name="ssl-key" value="$${verto_ssl_certdir}/wss.key"/>
+            <param name="ssl-chain" value="$${verto_ssl_certdir}/wss-chain.pem"/>
+            <param name="ws-binding" value="0.0.0.0:$${verto_port}"/>
+            <param name="wss-binding" value="0.0.0.0:$${verto_port_secure}"/>
+            <param name="use-http" value="false"/>
+            <param name="use-wss" value="true"/>
+            <param name="login-dialplan" value="default"/>
+            <param name="login-context" value="default"/>
+            <param name="auth-realm" value="$${domain}"/>
+            <param name="rtp-ip" value="$${local_ip_v4}"/>
+            <param name="ext-rtp-ip" value="$${local_ip_v4}"/>
+            <param name="sip-ip" value="$${local_ip_v4}"/>
+            <param name="codec-prefs" value="$${global_codec_prefs}"/>
+            <param name="moh-sound" value="$${hold_music}"/>
+            <param name="inbound-codec-negotiation" value="generous"/>
+            <param name="outbound-codec-negotiation" value="generous"/>
+        </profile>
+    </profiles>
+</configuration>

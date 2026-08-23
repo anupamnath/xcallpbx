@@ -1,0 +1,21 @@
+# XCall — AI agent systemd unit.
+[Unit]
+Description=XCall AI voice agent (FreeSWITCH ESL)
+After=network.target freeswitch.service
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/xcall/ai-agent
+ExecStart=/opt/xcall/ai-agent/.venv/bin/python -m xcall_agent --config /opt/xcall/ai-agent/config.yaml
+Restart=on-failure
+RestartSec=3
+# keep the agent tight
+User=www-data
+Group=www-data
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/spool/xcall /opt/xcall/ai-agent/tts_cache /opt/xcall/ai-agent/logs
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    XCall — access control lists.
+
+    - loopback.auto : allow ESL + agent traffic from localhost.
+    - xcall.auto    : the subnet where the XCall services run (agent + portal).
+                      Adjust the 10.0.0.0/8 example to your network, or add a
+                      specific host e.g. 192.168.1.10/32.
+-->
+<configuration name="acl.conf" description="Network Lists">
+    <network-lists>
+
+        <list name="xcall.auto" default="allow">
+            <node type="allow" cidr="10.0.0.0/8"/>
+            <node type="allow" cidr="172.16.0.0/12"/>
+            <node type="allow" cidr="192.168.0.0/16"/>
+            <!-- <node type="allow" cidr="203.0.113.5/32"/> -->
+        </list>
+
+        <list name="domains" default="deny">
+            <node type="allow" domain="$${domain}"/>
+        </list>
+
+        <list name="loopback.auto" default="deny">
+            <node type="allow" cidr="127.0.0.0/8"/>
+        </list>
+
+    </network-lists>
+</configuration>

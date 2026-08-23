@@ -1,0 +1,149 @@
+/* XCall web softphone — styles. A compact, dark, professional phone UI. */
+
+:root {
+  --xcall-bg: #0f172a;
+  --xcall-bg-2: #1e293b;
+  --xcall-panel: #111c33;
+  --xcall-accent: #22d3ee;
+  --xcall-accent-2: #6366f1;
+  --xcall-text: #e2e8f0;
+  --xcall-muted: #94a3b8;
+  --xcall-ok: #4ade80;
+  --xcall-warn: #facc15;
+  --xcall-err: #f87171;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: radial-gradient(circle at 20% 0%, #1b2a4a 0%, var(--xcall-bg) 60%);
+  color: var(--xcall-text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.phone {
+  max-width: 420px;
+  margin: 24px auto;
+  background: var(--xcall-panel);
+  border: 1px solid #263449;
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+
+/* header */
+.phone-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: linear-gradient(90deg, var(--xcall-accent-2), var(--xcall-accent));
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  background: #0f172a;
+  color: var(--xcall-accent);
+  font-weight: 800;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.brand-name { font-weight: 700; letter-spacing: 0.5px; color: #0f172a; }
+.status {
+  font-size: 12px;
+  background: rgba(15,23,42,0.35);
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #0f172a;
+  font-weight: 600;
+}
+.status-ok { color: #052e16; background: var(--xcall-ok); }
+.status-warn { color: #3b2f00; background: var(--xcall-warn); }
+.status-err { color: #3d0a0a; background: var(--xcall-err); }
+.status-ring { animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: 0.55; } }
+
+/* caller info */
+.caller {
+  text-align: center;
+  padding: 18px 16px 6px;
+}
+.caller-name { font-size: 20px; font-weight: 700; }
+.caller-number { font-size: 14px; color: var(--xcall-muted); }
+.caller-duration { font-size: 13px; color: var(--xcall-accent); margin-top: 4px; }
+
+/* dialpad */
+.dialpad { padding: 10px 18px; }
+#numberInput {
+  width: 100%;
+  padding: 12px;
+  font-size: 18px;
+  text-align: center;
+  border-radius: 12px;
+  border: 1px solid #263449;
+  background: var(--xcall-bg);
+  color: var(--xcall-text);
+  outline: none;
+}
+#numberInput:focus { border-color: var(--xcall-accent); }
+.keys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+.key {
+  padding: 14px 0;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: 1px solid #263449;
+  background: var(--xcall-bg-2);
+  color: var(--xcall-text);
+  cursor: pointer;
+  transition: transform 0.06s, background 0.15s;
+}
+.key:hover { background: #2b3a57; }
+.key:active { transform: scale(0.94); }
+
+/* controls */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 18px 18px;
+}
+.btn {
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform 0.1s, background 0.15s;
+}
+.btn:active { transform: scale(0.92); }
+.btn-call { background: var(--xcall-ok); color: #052e16; }
+.btn-call:hover { background: #5ee68e; }
+.btn-hangup { background: var(--xcall-err); color: #3d0a0a; }
+.btn-mute, .btn-hold { background: var(--xcall-bg-2); color: var(--xcall-text); border: 1px solid #263449; }
+.btn-mute.active, .btn-hold.active { background: var(--xcall-warn); color: #3b2f00; }
+
+/* log */
+.log {
+  flex: 1;
+  background: #0a1220;
+  border-top: 1px solid #263449;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--xcall-muted);
+  overflow-y: auto;
+  max-height: 150px;
+  line-height: 1.5;
+}
+
+.hidden { display: none !important; }

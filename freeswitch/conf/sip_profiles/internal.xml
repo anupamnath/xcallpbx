@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    XCall — internal SIP profile.
+
+    Serves the XCall users (extensions) and the web softphone. Includes
+    WebRTC-friendly media parameters (DTLS-SRTP, ICE) so SIP.js clients work
+    over the same profile.
+-->
+<profile name="internal">
+    <domains>
+        <domain name="all" alias="true" parse="false"/>
+    </domains>
+
+    <gateways>
+    </gateways>
+
+    <settings>
+
+        <param name="debug" value="0"/>
+        <param name="sip-trace" value="no"/>
+        <param name="sip-capture" value="no"/>
+        <param name="log-auth-failures" value="true"/>
+
+        <param name="context" value="default"/>
+        <param name="dialplan" value="XML"/>
+        <param name="sip-port" value="$${internal_sip_port}"/>
+        <param name="sip-ip" value="$${local_ip_v4}"/>
+        <param name="rtp-ip" value="$${local_ip_v4}"/>
+        <param name="rtp-timer-name" value="soft"/>
+
+        <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
+        <param name="outbound-codec-prefs" value="$${outbound_codec_prefs}"/>
+
+        <!-- dtls-srtp + ICE for WebRTC clients -->
+        <param name="rtp-protocols" value="udp,tcp,tls"/>
+        <param name="dtls-srtp" value="optional"/>
+        <param name="dtls-srtp-mode" value="srtp-aead-aes-256-gcm,srtp-aead-aes-128-gcm"/>
+        <param name="ice" value="true"/>
+        <param name="enable-3pcc" value="true"/>
+        <param name="media-option" value="resume-media-on-hold"/>
+        <param name="media-option" value="bypass-media-after-att-xfer"/>
+
+        <param name="apply-nat-acl" value="xcall.auto"/>
+        <param name="apply-candidate-acl" value="xcall.auto"/>
+        <param name="auth-acl" value="xcall.auto"/>
+
+        <param name="hold-music" value="$${hold_music}"/>
+        <param name="presence-proto-lookup" value="true"/>
+
+        <param name="force-register-domain" value="$${domain}"/>
+        <param name="force-register-db-domain" value="$${domain}"/>
+
+        <param name="user-agent-string" value="XCall PBX"/>
+        <param name="dial-string" value="{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})}"/>
+
+    </settings>
+</profile>

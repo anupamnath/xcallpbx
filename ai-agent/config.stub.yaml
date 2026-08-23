@@ -1,0 +1,49 @@
+# XCall AI agent — zero-dependency configuration.
+#
+# Uses stub STT/TTS/LLM engines so the agent runs with no ML packages or
+# model files. Use this to validate the flow end-to-end; then switch to the
+# real engines in config.yaml (see docs/AI_AGENT.md).
+esl:
+  host: "127.0.0.1"
+  port: 8021
+  password: "ClueCon"
+
+agent:
+  context: "xcall_ai"
+  identify_var: "xcall_agent"
+  identify_value: "true"
+
+script:
+  file: "scripts/helpdesk_triage.yaml"
+
+stt:
+  engine: "stub"              # whisper | vosk | stub
+  stub_text: "yes"            # canned transcript for every recording
+
+tts:
+  engine: "stub"              # piper | espeak | stub
+  cache_dir: "tts_cache"
+  sample_rate: 16000
+
+llm:
+  engine: "none"              # ollama | none
+
+recording:
+  enabled: true
+  dir: "/var/spool/xcall/recordings"
+
+handoff:
+  destination_ext: "7000"
+  context: "default"
+  hold_message: "Thank you for holding. I will now connect you to a specialist."
+
+timing:
+  no_speech_retries: 2
+  max_utterance_seconds: 15
+  end_of_speech_silence: 1.2
+  vad_threshold: 800
+  max_call_seconds: 900
+
+logging:
+  level: "INFO"
+  file: "logs/xcall-agent.log"
