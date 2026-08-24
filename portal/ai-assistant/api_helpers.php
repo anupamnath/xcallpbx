@@ -6,7 +6,7 @@
  * The encryption key lives in resources/xcall_secrets.php (chmod 600).
  */
 
-require_once dirname(__DIR__, 2) . "/resources/require.php";
+require_once dirname(__DIR__) . "/resources/require.php";
 
 function xcall_fail(string $message, int $status = 400): void {
     http_response_code($status);
@@ -29,7 +29,7 @@ function xcall_input_json(): array {
 }
 
 function xcall_secret_config_path(): string {
-    return dirname(__DIR__, 2) . "/resources/xcall_secrets.php";
+    return dirname(__DIR__) . "/resources/xcall_secrets.php";
 }
 
 function xcall_get_encryption_key(): string {

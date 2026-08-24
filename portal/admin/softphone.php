@@ -4,7 +4,7 @@
  * Theme, ringtone, hold music, auto-answer for the in-browser softphone.
  */
 
-require_once dirname(__DIR__, 2) . "/resources/require.php";
+require_once dirname(__DIR__) . "/resources/require.php";
 require_once dirname(__DIR__) . "/ai-assistant/api_helpers.php";
 
 if (empty($_SESSION["username"])) {

@@ -5,7 +5,7 @@
  * provider (API key or local machine), voice, handoff, and call settings.
  */
 
-require_once dirname(__DIR__, 2) . "/resources/require.php";
+require_once dirname(__DIR__) . "/resources/require.php";
 require_once __DIR__ . "/api_helpers.php";
 
 if (empty($_SESSION["username"])) {
