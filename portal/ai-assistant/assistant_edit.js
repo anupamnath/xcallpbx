@@ -31,14 +31,18 @@
     gemini:        { model: 'gemini-1.5-pro',        base: 'https://generativelanguage.googleapis.com/v1beta/openai', needsKey: true,  hint: 'e.g. gemini-1.5-pro' },
     groq:          { model: 'llama-3.3-70b-versatile', base: 'https://api.groq.com/openai/v1', needsKey: true,  hint: 'e.g. llama-3.3-70b-versatile' },
     openai_compatible: { model: '',                  base: '',                                  needsKey: true,  hint: 'model name on your endpoint' },
-    ollama:        { model: 'llama3.1',              base: 'http://127.0.0.1:11434',           needsKey: false, hint: 'e.g. llama3.1' }
+    ollama:        { model: 'llama3.1',              base: 'http://127.0.0.1:11434',           needsKey: false, hint: 'e.g. llama3.1' },
+    lmstudio:      { model: 'local-model',           base: 'http://127.0.0.1:1234/v1',         needsKey: false, hint: 'e.g. local-model' },
+    vllm:          { model: '',                      base: 'http://127.0.0.1:8000/v1',         needsKey: false, hint: 'model served by vLLM' },
+    llamacpp:      { model: '',                      base: 'http://127.0.0.1:8080/v1',         needsKey: false, hint: 'model loaded in llama.cpp' },
+    localai:       { model: '',                      base: 'http://127.0.0.1:8080/v1',         needsKey: false, hint: 'model served by LocalAI' }
   };
 
   function updateProviderUI() {
     var p = $('providerSelect').value;
     var cfg = providerDefaults[p] || providerDefaults.openai;
     $('apiKeyField').style.display = cfg.needsKey ? 'flex' : 'none';
-    $('localHint').style.display = p === 'ollama' ? 'flex' : 'none';
+    $('localHint').style.display = p === 'ollama' || p === 'lmstudio' || p === 'vllm' || p === 'llamacpp' || p === 'localai' ? 'flex' : 'none';
     $('modelHint').textContent = cfg.hint;
     if (cfg.model && !document.querySelector('[name=assistant_model]').value.trim()) {
       document.querySelector('[name=assistant_model]').value = cfg.model;
@@ -49,6 +53,45 @@
   }
   $('providerSelect').addEventListener('change', updateProviderUI);
   updateProviderUI();
+
+  // ---- detect local AI models ---------------------------------------- //
+  function detectLocal() {
+    var btn = $('detectBtn');
+    var msg = $('detectMsg');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = 'Detecting…';
+    msg.textContent = '';
+
+    fetch('assistant_api.php?action=local_models')
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res.error) throw new Error(res.error);
+        var found = res.servers || [];
+        if (!found.length) {
+          msg.textContent = 'No local AI server found. Start Ollama / LM Studio / vLLM / llama.cpp, then try again.';
+          msg.style.color = '#b45309';
+          return;
+        }
+        msg.textContent = 'Found ' + found.length + ' server(s): ' + found.map(function (s) { return s.name; }).join(', ');
+        // auto-select the first server
+        var first = found[0];
+        var select = $('providerSelect');
+        var names = ['ollama', 'lmstudio', 'vllm', 'llamacpp', 'localai'];
+        if (names.indexOf(first.provider) >= 0) {
+          select.value = first.provider;
+        }
+        document.querySelector('[name=assistant_api_base_url]').value = first.base_url || '';
+        if (first.models && first.models.length) {
+          document.querySelector('[name=assistant_model]').value = first.models[0];
+          msg.textContent += '  Model: ' + first.models[0];
+        }
+        updateProviderUI();
+      })
+      .catch(function (e) { msg.textContent = 'Detect failed: ' + e.message; msg.style.color = '#dc2626'; })
+      .finally(function () { btn.disabled = false; btn.textContent = '⚡ Detect local AI models'; });
+  }
+  $('detectBtn') && $('detectBtn').addEventListener('click', detectLocal);
 
   // ---- collect form ---------------------------------------------------- //
   function collectForm() {

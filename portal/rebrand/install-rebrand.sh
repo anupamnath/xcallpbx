@@ -70,8 +70,18 @@ if [ -d "$AIASSISTANT" ]; then
     fi
 fi
 
-# 6. permissions ------------------------------------------------------- #
-chown -R www-data:www-data "$FUSIONPBX_DIR/webphone" "$FUSIONPBX_DIR/ai-assistant" "$IMG_DIR/xcall.css" 2>/dev/null || true
+# 6. admin panel ------------------------------------------------------- #
+ADMIN="$SCRIPT_DIR/../admin"
+if [ -d "$ADMIN" ]; then
+    install -d "$FUSIONPBX_DIR/admin"
+    install -m 644 "$ADMIN"/*.php "$FUSIONPBX_DIR/admin/"
+    install -m 644 "$ADMIN"/*.css "$FUSIONPBX_DIR/admin/"
+    install -m 644 "$ADMIN"/*.js  "$FUSIONPBX_DIR/admin/"
+    echo "   installed admin panel at /admin"
+fi
+
+# 7. permissions ------------------------------------------------------- #
+chown -R www-data:www-data "$FUSIONPBX_DIR/webphone" "$FUSIONPBX_DIR/ai-assistant" "$FUSIONPBX_DIR/admin" "$IMG_DIR/xcall.css" 2>/dev/null || true
 
 echo
 echo "Done. Next steps:"

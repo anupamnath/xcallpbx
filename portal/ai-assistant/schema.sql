@@ -43,3 +43,52 @@ CREATE TABLE IF NOT EXISTS v_xcall_settings (
 INSERT INTO v_xcall_settings (setting_name, setting_value)
 VALUES ('agent_shared_secret', encode(gen_random_bytes(32), 'hex'))
 ON CONFLICT (setting_name) DO NOTHING;
+
+-- ------------------------------------------------------------------ #
+-- XCall company / branding settings (admin panel)
+-- One row per domain; holds the system name + company details +
+-- softphone customizations. Seeded for the default domain below.
+-- ------------------------------------------------------------------ #
+CREATE TABLE IF NOT EXISTS v_xcall_company (
+    company_uuid            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    domain_uuid             uuid NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
+    system_name             varchar(255) NOT NULL DEFAULT 'XCall',
+    tagline                 varchar(255) NOT NULL DEFAULT 'Cloud PBX',
+    logo_path               varchar(500) NOT NULL DEFAULT '/themes/default/images/xcall_logo.svg',
+    primary_color           varchar(16)  NOT NULL DEFAULT '#6366f1',
+    accent_color            varchar(16)  NOT NULL DEFAULT '#22d3ee',
+    company_name            varchar(255) NOT NULL DEFAULT '',
+    company_phone           varchar(64)  NOT NULL DEFAULT '',
+    company_email           varchar(255) NOT NULL DEFAULT '',
+    company_address         text,
+    company_website         varchar(255) NOT NULL DEFAULT '',
+    softphone_ringtone      varchar(255) NOT NULL DEFAULT 'default',
+    softphone_theme         varchar(64)  NOT NULL DEFAULT 'dark',
+    softphone_auto_answer   boolean NOT NULL DEFAULT false,
+    softphone_hold_music    varchar(255) NOT NULL DEFAULT 'local_stream://moh',
+    softphone_enabled       boolean NOT NULL DEFAULT true,
+    assistant_default_uuid  uuid,
+    company_created         timestamptz  NOT NULL DEFAULT now(),
+    company_updated         timestamptz  NOT NULL DEFAULT now()
+);
+
+INSERT INTO v_xcall_company (domain_uuid, system_name, tagline)
+SELECT '00000000-0000-0000-0000-000000000000', 'XCall', 'Cloud PBX'
+WHERE NOT EXISTS (SELECT 1 FROM v_xcall_company WHERE domain_uuid = '00000000-0000-0000-0000-000000000000');
+
+-- ------------------------------------------------------------------ #
+-- Client directory (admin panel CRM)
+-- ------------------------------------------------------------------ #
+CREATE TABLE IF NOT EXISTS v_xcall_clients (
+    client_uuid     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    domain_uuid     uuid NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
+    client_name     varchar(255) NOT NULL DEFAULT '',
+    client_phone    varchar(64)  NOT NULL DEFAULT '',
+    client_email    varchar(255) NOT NULL DEFAULT '',
+    client_company  varchar(255) NOT NULL DEFAULT '',
+    client_notes    text,
+    client_status   varchar(32)  NOT NULL DEFAULT 'active',
+    client_created  timestamptz  NOT NULL DEFAULT now(),
+    client_updated  timestamptz  NOT NULL DEFAULT now()
+);
+

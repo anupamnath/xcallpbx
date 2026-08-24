@@ -257,6 +257,10 @@ def _default_base_url(provider: str) -> str:
         "groq": "https://api.groq.com/openai/v1",
         "openai_compatible": "http://127.0.0.1:8080/v1",
         "ollama": "http://127.0.0.1:11434",
+        "lmstudio": "http://127.0.0.1:1234/v1",
+        "vllm": "http://127.0.0.1:8000/v1",
+        "llamacpp": "http://127.0.0.1:8080/v1",
+        "localai": "http://127.0.0.1:8080/v1",
     }.get(provider, "https://api.openai.com/v1")
 
 
@@ -268,5 +272,9 @@ def _default_model(provider: str) -> str:
         "groq": "llama-3.3-70b-versatile",
         "openai_compatible": "local-model",
         "ollama": "llama3.1",
+        "lmstudio": "local-model",
+        "vllm": "meta-llama/Llama-3.1-8B-Instruct",
+        "llamacpp": "local-model",
+        "localai": "local-model",
     }.get(provider, "gpt-4o-mini")
 

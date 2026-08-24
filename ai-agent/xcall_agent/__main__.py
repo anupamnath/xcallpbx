@@ -82,15 +82,28 @@ def build_assistant_agent(config: Config, log):
     acfg = config.assistant
     assistant = load_assistant_config(acfg)
     llm_chat = make_llm_chat(assistant)
-    stt = make_stt(config.stt)
-    tts = make_tts(config.tts)
+
+    # The portal's "Voice & Speech" tab can override the local STT/TTS engines.
+    stt_cfg = dict(config.stt)
+    if (assistant.get("assistant_stt_engine") or "whisper") != "stub":
+        stt_cfg["engine"] = assistant.get("assistant_stt_engine") or "whisper"
+        if assistant.get("assistant_language"):
+            stt_cfg["language"] = assistant.get("assistant_language")
+    tts_cfg = dict(config.tts)
+    if (assistant.get("assistant_tts_engine") or "piper") != "stub":
+        tts_cfg["engine"] = assistant.get("assistant_tts_engine") or "piper"
+        if assistant.get("assistant_voice"):
+            tts_cfg["voice"] = assistant.get("assistant_voice")
+
+    stt = make_stt(stt_cfg)
+    tts = make_tts(tts_cfg)
 
     log.info(
         "assistant mode ready: %s (%s/%s) STT=%s TTS=%s",
         assistant.get("assistant_name"),
         assistant.get("assistant_provider"),
         assistant.get("assistant_model"),
-        config.stt.get("engine"), config.tts.get("engine"),
+        stt_cfg.get("engine"), tts_cfg.get("engine"),
     )
     return assistant, llm_chat, stt, tts
 

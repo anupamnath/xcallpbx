@@ -19,6 +19,13 @@ engine) and **FusionPBX** (management portal, rebranded here as "XCall"). It pro
 - **AI Assistant manager** — a Telnyx-style portal page (`/ai-assistant/`)
   where you add context, choose the model (API key or local machine), set the
   voice/handoff settings, and the agent picks it up on the next call.
+  Local models are auto-detected — **Ollama, LM Studio, vLLM, llama.cpp,
+  LocalAI** — with a one-click **"⚡ Detect local AI models"** button.
+- **Admin panel** — an extra portal section (`/admin/`) where you can:
+  - **name your system** (brand text + colors pushed across the portal),
+  - enter **company details** (name, phone, email, address, website, logo),
+  - **maintain client data** (a lightweight CRM: contacts, companies, status),
+  - **customize the softphone** (theme, ringtone, hold music, auto-answer).
 - **Local AI integration** — STT, LLM, and TTS all run against local engines
   (faster-whisper / whisper.cpp, Ollama, Piper), so no call audio leaves your
   network unless you choose a cloud provider for the assistant's LLM.
@@ -36,10 +43,10 @@ engine) and **FusionPBX** (management portal, rebranded here as "XCall"). It pro
 ```
 ai-agent/          Python AI voice agent (ESL client, script + assistant engines, LLM chat, tests)
 freeswitch/        FreeSWITCH configuration (dialplan, verto/WebRTC, sofia, ESL, ACLs)
-portal/            XCall branding + web softphone + AI Assistant manager for the portal
+portal/            XCall branding + admin panel + web softphone + AI Assistant manager
 docker/            Docker Compose + images (FreeSWITCH, portal, AI agent)
-deploy/            Non-Docker installer for a bare Ubuntu server
-docs/              Architecture, setup, WebRTC provisioning, AI agent guide, VPS hosting
+deploy/            Self-contained VPS installer (bootstrap.sh + provision.sh, Debian 12)
+docs/              Architecture, setup, WebRTC provisioning, AI agent guide, VPS deploy/hosting
 ```
 
 ## Quick start (Docker)
@@ -57,6 +64,28 @@ Then:
 3. Start the AI agent (inside the compose stack) so it connects to FreeSWITCH over ESL.
 4. Dial the AI-agent extension (e.g. `5000`) from the web softphone — the bot answers,
    runs the triage script, then transfers to extension `7000`.
+
+## One-command VPS install (Debian 12)
+
+On any bare Debian 12 VPS, as root or a sudo user:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/anupamnath/xcallpbx/main/deploy/bootstrap.sh | sudo bash
+```
+
+With a real domain + TLS + explicit passwords:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/anupamnath/xcallpbx/main/deploy/bootstrap.sh | \
+  sudo bash -s -- --domain pbx.example.com --admin-pass 'Str0ngPass1' \
+    --db-pass 'PgPass1' --esl-pass 'ClueCon!' --email you@example.com
+```
+
+This installs **FreeSWITCH + FusionPBX (rebranded XCall) + the admin panel +
+AI Assistant manager + WebRTC softphone + AI voice agent** from a bare box,
+then configures nginx (TLS), the firewall, and the systemd services.
+
+Full syntax and first-login steps: **[docs/VPS_DEPLOY.md](docs/VPS_DEPLOY.md)**.
 
 See [docs/SETUP.md](docs/SETUP.md) for the step-by-step guide (Docker and bare-metal),
 [docs/WEBRTC_PROVISIONING.md](docs/WEBRTC_PROVISIONING.md) for browser registration details,

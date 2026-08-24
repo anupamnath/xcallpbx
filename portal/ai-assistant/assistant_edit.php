@@ -55,6 +55,7 @@ $is_new = empty($assistant_uuid) || $duplicate || !$assistant;
       <a href="#">Tools</a>
       <div class="nav-label">Deploy</div>
       <a href="../webphone/index.html">Web Softphone</a>
+      <a href="../admin/index.php">Admin Panel</a>
       <a href="../../core/dashboard/">Back to Portal</a>
     </nav>
   </aside>
@@ -109,7 +110,11 @@ $is_new = empty($assistant_uuid) || $duplicate || !$assistant;
                   "gemini" => "Google Gemini (API key)",
                   "groq" => "Groq (API key)",
                   "openai_compatible" => "Any OpenAI-compatible endpoint (API key)",
-                  "ollama" => "Local machine (Ollama — no API key)",
+                  "ollama" => "Local machine — Ollama (no API key)",
+                  "lmstudio" => "Local machine — LM Studio (no API key)",
+                  "vllm" => "Local machine — vLLM (no API key)",
+                  "llamacpp" => "Local machine — llama.cpp (no API key)",
+                  "localai" => "Local machine — LocalAI (no API key)",
               ];
               $cur = $assistant["assistant_provider"] ?? "openai";
               foreach ($providers as $val => $label) {
@@ -143,9 +148,18 @@ $is_new = empty($assistant_uuid) || $duplicate || !$assistant;
 
         <div class="xcall-field" id="localHint" style="display:none">
           <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:13px">
-            <strong>Local machine mode</strong> — point the base URL at your Ollama server
-            (e.g. <code>http://192.168.1.10:11434</code> or the Docker service name) and set the model
-            (e.g. <code>llama3.1</code>). No API key needed.
+            <strong>Local machine mode</strong> — the AI runs on this server, no API key needed.
+            Common local servers are auto-detected:
+            <ul style="margin:6px 0 0 18px;padding:0">
+              <li><b>Ollama</b> — <code>http://127.0.0.1:11434</code> (native, no /v1)</li>
+              <li><b>LM Studio</b> — <code>http://127.0.0.1:1234/v1</code></li>
+              <li><b>vLLM</b> — <code>http://127.0.0.1:8000/v1</code></li>
+              <li><b>llama.cpp / LocalAI</b> — <code>http://127.0.0.1:8080/v1</code></li>
+            </ul>
+            <div style="margin-top:8px">
+              <button type="button" class="xcall-btn xcall-btn-outline" id="detectBtn" style="font-size:12px;padding:6px 12px">⚡ Detect local AI models</button>
+              <span id="detectMsg" style="color:#15803d;font-size:12px;margin-left:8px"></span>
+            </div>
           </div>
         </div>
 

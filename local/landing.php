@@ -53,6 +53,7 @@ $php_v = phpversion();
       <div class="lbl">Workspace</div>
       <a href="/" class="on">Dashboard</a>
       <a href="/ai-assistant/assistants.php">AI Assistants</a>
+      <a href="/admin/index.php">Admin Panel</a>
       <a href="/webphone/index.html">Web Softphone</a>
       <div class="lbl">System</div>
       <a href="/ai-assistant/assistant_api.php?action=list">Assistant API (JSON)</a>
@@ -64,18 +65,18 @@ $php_v = phpversion();
     <div class="grid">
       <a class="card" href="/ai-assistant/assistants.php">
         <h3>AI Assistants</h3>
-        <p>Telnyx-style assistant manager — write the context, pick an LLM via API key or your local machine (Ollama), configure voice and handoff.</p>
+        <p>Telnyx-style assistant manager — write the context, pick an LLM via API key or your local machine (Ollama / LM Studio / vLLM / llama.cpp), configure voice and handoff.</p>
         <span class="tag">Open AI Assistants &rarr;</span>
+      </a>
+      <a class="card" href="/admin/index.php">
+        <h3>Admin Panel</h3>
+        <p>Name your system, enter company details, maintain client data, and customize the softphone.</p>
+        <span class="tag">Open Admin Panel &rarr;</span>
       </a>
       <a class="card" href="/webphone/index.html">
         <h3>Web Softphone</h3>
         <p>In-browser WebRTC phone (SIP.js). Logged-in clients dial straight from the portal — no desktop app. Calls require the FreeSWITCH server.</p>
         <span class="tag">Open Softphone &rarr;</span>
-      </a>
-      <a class="card" href="/ai-assistant/assistant_edit.php">
-        <h3>Create an Assistant</h3>
-        <p>Start from scratch: name, greeting, instructions/context, provider, voice, handoff extension, and call settings.</p>
-        <span class="tag">New AI Assistant &rarr;</span>
       </a>
     </div>
     <div class="status">

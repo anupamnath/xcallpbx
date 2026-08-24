@@ -53,6 +53,7 @@ try {
       <a href="#">Speech-to-Text</a>
       <div class="nav-label">Deploy</div>
       <a href="../webphone/index.html">Web Softphone</a>
+      <a href="../admin/index.php">Admin Panel</a>
       <a href="../../core/dashboard/">Back to Portal</a>
     </nav>
   </aside>

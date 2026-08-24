@@ -120,6 +120,60 @@ switch ($action) {
         xcall_ok(["deleted" => true]);
     }
 
+    case "local_models": {
+        // Probe well-known local AI endpoints on the PBX host and list models.
+        // This lets the admin pick a local model (Ollama, LM Studio, vLLM,
+        // llama.cpp, LocalAI) without typing the base URL / model name.
+        $servers = [];
+        $probes = [
+            // provider => [name, [candidate base urls], models path]
+            "ollama"    => ["Ollama",    ["http://127.0.0.1:11434"],                  "api/tags",          true],
+            "lmstudio"  => ["LM Studio", ["http://127.0.0.1:1234/v1"],                "models",            false],
+            "vllm"      => ["vLLM",      ["http://127.0.0.1:8000/v1"],                "models",            false],
+            "llamacpp"  => ["llama.cpp", ["http://127.0.0.1:8080/v1"],                "models",            false],
+            "localai"   => ["LocalAI",   ["http://127.0.0.1:8080/v1", "http://127.0.0.1:8080/v1"], "models", false],
+        ];
+        foreach ($probes as $provider => [$name, $urls, $path, $is_ollama]) {
+            foreach ($urls as $base_url) {
+                $endpoint = rtrim($base_url, "/") . "/" . $path;
+                $ctx = stream_context_create([
+                    "http" => [
+                        "timeout" => 1,
+                        "ignore_errors" => true,
+                        "header" => "Accept: application/json\r\n",
+                    ],
+                ]);
+                $resp = @file_get_contents($endpoint, false, $ctx);
+                if ($resp === false) {
+                    continue;
+                }
+                $data = @json_decode($resp, true);
+                if (!is_array($data)) {
+                    continue;
+                }
+                $models = [];
+                if ($is_ollama && isset($data["models"]) && is_array($data["models"])) {
+                    foreach ($data["models"] as $m) {
+                        $models[] = $m["name"] ?? $m["model"] ?? "";
+                    }
+                } elseif (isset($data["data"]) && is_array($data["data"])) {
+                    foreach ($data["data"] as $m) {
+                        $models[] = $m["id"] ?? $m["name"] ?? "";
+                    }
+                }
+                $models = array_values(array_filter(array_map("trim", $models)));
+                $servers[] = [
+                    "provider" => $provider,
+                    "name" => $name,
+                    "base_url" => $base_url,
+                    "models" => $models ?: [],
+                ];
+                break; // only the first reachable URL per provider
+            }
+        }
+        xcall_ok(["servers" => $servers]);
+    }
+
     // ------------------------------------------------------------------ #
     // AI agent endpoints (authenticated with the shared secret)
     // ------------------------------------------------------------------ #

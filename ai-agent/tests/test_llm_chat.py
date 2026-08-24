@@ -99,6 +99,37 @@ class TestLLMChatClient(unittest.TestCase):
         client = make_llm_chat(cfg)
         self.assertEqual(client.base_url, "http://127.0.0.1:11434")
 
+    def test_make_llm_chat_local_providers(self):
+        # LM Studio
+        client = make_llm_chat({"assistant_provider": "lmstudio"})
+        self.assertEqual(client.base_url, "http://127.0.0.1:1234/v1")
+        self.assertEqual(client.model, "local-model")
+        # vLLM
+        client = make_llm_chat({"assistant_provider": "vllm"})
+        self.assertEqual(client.base_url, "http://127.0.0.1:8000/v1")
+        # llama.cpp
+        client = make_llm_chat({"assistant_provider": "llamacpp", "assistant_model": "llama-2-7b"})
+        self.assertEqual(client.base_url, "http://127.0.0.1:8080/v1")
+        self.assertEqual(client.model, "llama-2-7b")
+        # LocalAI
+        client = make_llm_chat({"assistant_provider": "localai"})
+        self.assertEqual(client.base_url, "http://127.0.0.1:8080/v1")
+
+    def test_local_provider_uses_openai_compatible_path(self):
+        # a local provider with a reachable base URL should hit /chat/completions
+        MockLLMServer.responses = [{"choices": [{"message": {"content": "local hello"}}]}]
+        MockLLMServer.requests = []
+        cfg = {
+            "assistant_provider": "lmstudio",
+            "assistant_api_base_url": f"http://127.0.0.1:{self.port}/v1",
+            "assistant_model": "local-model",
+        }
+        client = make_llm_chat(cfg)
+        self.assertEqual(client.provider, "lmstudio")
+        resp = client.chat([{"role": "user", "content": "hi"}])
+        self.assertEqual(resp.text, "local hello")
+        self.assertTrue(MockLLMServer.requests[0]["path"].endswith("/chat/completions"))
+
 
 if __name__ == "__main__":
     unittest.main()

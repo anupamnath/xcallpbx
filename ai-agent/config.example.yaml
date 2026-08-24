@@ -51,12 +51,20 @@ tts:
 
 # Large language model (used for response classification / free-form handling).
 llm:
-  engine: "ollama"            # ollama | none
+  engine: "ollama"            # ollama | openai_compatible | none
   base_url: "http://127.0.0.1:11434"
   model: "llama3.1"
   temperature: 0.1
   # If the LLM is unreachable, the agent falls back to keyword matching.
   fallback_to_keywords: true
+  # When agent.mode = "assistant", the model/provider/base URL are taken from
+  # the portal AI assistant instead (cloud key or local model via the
+  # Detect-local-models button). Supported local providers:
+  #   ollama    -> http://127.0.0.1:11434        (native, no /v1)
+  #   lmstudio  -> http://127.0.0.1:1234/v1
+  #   vllm      -> http://127.0.0.1:8000/v1
+  #   llamacpp  -> http://127.0.0.1:8080/v1
+  #   localai   -> http://127.0.0.1:8080/v1
 
 # Call recording of the conversation (for QA / compliance).
 recording:

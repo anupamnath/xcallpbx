@@ -92,6 +92,63 @@ if (!class_exists('XCallLocalDatabase')) {
                 setting_value TEXT
             )");
 
+            // v_xcall_company — system/company branding + softphone settings
+            $this->pdo->exec("CREATE TABLE IF NOT EXISTS v_xcall_company (
+                company_uuid  TEXT PRIMARY KEY,
+                domain_uuid   TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
+                system_name   TEXT NOT NULL DEFAULT 'XCall',
+                tagline       TEXT NOT NULL DEFAULT 'Cloud PBX',
+                logo_path     TEXT NOT NULL DEFAULT '/themes/default/images/xcall_logo.svg',
+                primary_color TEXT NOT NULL DEFAULT '#6366f1',
+                accent_color  TEXT NOT NULL DEFAULT '#22d3ee',
+                company_name  TEXT NOT NULL DEFAULT '',
+                company_phone TEXT NOT NULL DEFAULT '',
+                company_email TEXT NOT NULL DEFAULT '',
+                company_address TEXT,
+                company_website TEXT NOT NULL DEFAULT '',
+                softphone_ringtone TEXT NOT NULL DEFAULT 'default',
+                softphone_theme TEXT NOT NULL DEFAULT 'dark',
+                softphone_auto_answer TEXT NOT NULL DEFAULT 'false',
+                softphone_hold_music TEXT NOT NULL DEFAULT 'local_stream://moh',
+                softphone_enabled TEXT NOT NULL DEFAULT 'true',
+                assistant_default_uuid TEXT,
+                company_created TEXT NOT NULL DEFAULT (datetime('now')),
+                company_updated TEXT NOT NULL DEFAULT (datetime('now'))
+            )");
+            $st = $this->pdo->query("SELECT COUNT(*) FROM v_xcall_company WHERE domain_uuid = '00000000-0000-0000-0000-000000000000'");
+            if ((int)$st->fetchColumn() === 0) {
+                $ins = $this->pdo->prepare('INSERT INTO v_xcall_company (company_uuid, domain_uuid) VALUES (?, ?)');
+                $ins->execute(['00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000']);
+            }
+
+            // v_xcall_clients — admin panel client directory
+            $this->pdo->exec("CREATE TABLE IF NOT EXISTS v_xcall_clients (
+                client_uuid   TEXT PRIMARY KEY,
+                domain_uuid   TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
+                client_name   TEXT NOT NULL DEFAULT '',
+                client_phone  TEXT NOT NULL DEFAULT '',
+                client_email  TEXT NOT NULL DEFAULT '',
+                client_company TEXT NOT NULL DEFAULT '',
+                client_notes  TEXT,
+                client_status TEXT NOT NULL DEFAULT 'active',
+                client_created TEXT NOT NULL DEFAULT (datetime('now')),
+                client_updated TEXT NOT NULL DEFAULT (datetime('now'))
+            )");
+
+            // minimal v_default_settings so the admin "system name" push works
+            $this->pdo->exec("CREATE TABLE IF NOT EXISTS v_default_settings (
+                default_setting_uuid TEXT PRIMARY KEY,
+                default_setting_category TEXT,
+                default_setting_subcategory TEXT,
+                default_setting_value TEXT
+            )");
+            $ins = $this->pdo->prepare(
+                "INSERT OR IGNORE INTO v_default_settings
+                 (default_setting_uuid, default_setting_category, default_setting_subcategory, default_setting_value)
+                 VALUES (?, 'theme', 'menu_brand_text', 'XCall')"
+            );
+            $ins->execute(['00000000-0000-0000-0000-000000000010']);
+
             // minimal v_users table so webphone/config.php works in the demo
             $this->pdo->exec("CREATE TABLE IF NOT EXISTS v_users (
                 user_uuid TEXT PRIMARY KEY,
@@ -166,23 +223,32 @@ if (!class_exists('XCallLocalDatabase')) {
 
         public function execute(string $sql, array $params = []): void
         {
-            // the API inserts new assistants without a uuid; Postgres fills it
-            // via gen_random_uuid() — inject the column + placeholder here for SQLite.
-            if (stripos(ltrim($sql), 'insert into v_xcall_assistants') === 0 && stripos($sql, 'assistant_uuid') === false) {
-                $sql = preg_replace(
-                    ['/^(\s*insert\s+into\s+v_xcall_assistants\s*\()/i', '/\bvalues\s*\(/i'],
-                    ['$1assistant_uuid, ', 'values (:assistant_uuid, '],
-                    $sql,
-                    1
-                );
-                $params['assistant_uuid'] = sprintf(
-                    '%s-%s-%s-%s-%s',
-                    bin2hex(random_bytes(4)),
-                    bin2hex(random_bytes(2)),
-                    bin2hex(random_bytes(2)),
-                    bin2hex(random_bytes(2)),
-                    bin2hex(random_bytes(6))
-                );
+            // the API inserts new rows without a uuid; Postgres fills it via
+            // gen_random_uuid() — inject the column + placeholder here for SQLite.
+            $tables = [
+                "v_xcall_assistants" => "assistant_uuid",
+                "v_xcall_company"    => "company_uuid",
+                "v_xcall_clients"    => "client_uuid",
+            ];
+            $lower = ltrim(strtolower($sql));
+            foreach ($tables as $table => $col) {
+                if (strpos($lower, "insert into $table") === 0 && stripos($sql, $col) === false) {
+                    $sql = preg_replace(
+                        ['/^(\s*insert\s+into\s+' . $table . '\s*\()/i', '/\bvalues\s*\(/i'],
+                        ['$1' . $col . ', ', 'values (:' . $col . ', '],
+                        $sql,
+                        1
+                    );
+                    $params[$col] = sprintf(
+                        '%s-%s-%s-%s-%s',
+                        bin2hex(random_bytes(4)),
+                        bin2hex(random_bytes(2)),
+                        bin2hex(random_bytes(2)),
+                        bin2hex(random_bytes(2)),
+                        bin2hex(random_bytes(6))
+                    );
+                    break;
+                }
             }
             $stmt = $this->prepare($sql);
             $stmt->execute($params);

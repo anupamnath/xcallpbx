@@ -1,0 +1,77 @@
+/* XCall Admin Panel — shared styles (extends the AI assistant theme). */
+
+.xcall-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--x-c-muted);
+  margin: 22px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--x-c-border);
+}
+
+/* clients table */
+.xcall-table-wrap {
+  background: #fff;
+  border: 1px solid var(--x-c-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.xcall-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.xcall-table th {
+  text-align: left;
+  background: var(--x-c-bg-light);
+  padding: 10px 14px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--x-c-muted);
+  border-bottom: 1px solid var(--x-c-border);
+}
+.xcall-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.xcall-table tr:last-child td { border-bottom: none; }
+.xcall-badge-ok, .xcall-badge-off, .xcall-badge-lead {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.xcall-badge-ok   { background: #dcfce7; color: #15803d; }
+.xcall-badge-off  { background: #fee2e2; color: #b91c1c; }
+.xcall-badge-lead { background: #fef9c3; color: #a16207; }
+
+/* modal */
+.xcall-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(15,23,42,.5);
+  display: none; align-items: center; justify-content: center; z-index: 50;
+}
+.xcall-modal-backdrop.show { display: flex; }
+.xcall-modal {
+  background: #fff; border-radius: 12px; width: min(560px, 92vw);
+  padding: 22px 26px; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.xcall-modal h3 { margin: 0 0 16px; font-size: 18px; }
+
+/* softphone customization preview */
+.sp-preview {
+  border: 1px solid var(--x-c-border); border-radius: 10px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 14px; background: #fff; margin-top: 8px;
+}
+.sp-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--x-c-cyan), var(--x-c-accent));
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; flex-shrink: 0;
+}
+.sp-line { font-size: 14px; color: var(--x-c-text); }
+.sp-line small { display: block; color: var(--x-c-muted); font-size: 12px; }

@@ -11,8 +11,8 @@ ExecStart=/opt/xcall/ai-agent/.venv/bin/python -m xcall_agent --config /opt/xcal
 Restart=on-failure
 RestartSec=3
 # keep the agent tight
-User=www-data
-Group=www-data
+User=root
+Group=root
 NoNewPrivileges=true
 ProtectSystem=full
 ReadWritePaths=/var/spool/xcall /opt/xcall/ai-agent/tts_cache /opt/xcall/ai-agent/logs
