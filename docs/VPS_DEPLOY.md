@@ -34,6 +34,14 @@ curl -fsSL https://raw.githubusercontent.com/anupamnath/xcallpbx/main/deploy/boo
 | `--esl-pass` | FreeSWITCH event-socket password used by the AI agent (default: `ClueCon` — change it). |
 | `--email` | If set, the installer runs certbot for a trusted TLS certificate. Without it, a self-signed cert is generated. |
 | `--skip-ai` | Skip the AI agent service (the AI assistant page still installs). |
+| `--signalwire-token` | Free token from https://signalwire.com → installs FreeSWITCH from the official SignalWire apt repo (fast). Without it, the installer **builds FreeSWITCH 1.10.12 from source** (fully self-contained, no account, ~30–60 min on a 2 vCPU VPS). |
+
+> **Why is FreeSWITCH built from source?** The old public package repo
+> (`files.freeswitch.org`) now requires a SignalWire login, and the public
+> `pkg.signalwire.com` repo was retired — both return 401/404 anonymously.
+> The provisioner therefore falls back to a deterministic source build
+> (the exact recipe FusionPBX's own installer uses), or uses the fast
+> official repo when you pass `--signalwire-token`.
 
 ## What you get
 
@@ -93,7 +101,7 @@ sudo bash deploy/bootstrap.sh   # idempotent — re-applies config
 |---|---|
 | `certbot failed` | DNS A record must point at the server **before** running with `--email`. Re-run with the correct DNS or use `certbot --nginx -d <domain>` manually. |
 | Portal shows "Unable to connect to database" | Check `/etc/fusionpbx/config.conf` password matches the DB: `sudo -u postgres psql -c "ALTER USER fusionpbx WITH PASSWORD '...'"`. |
-| Softphone can't register | Ensure 8081 (ws) / 8082 (wss) are open on the firewall and the verto profile points at your domain. |
+| Softphone can't register | Open 8081/8082 (and 8083/8084 for verto.js clients) on the firewall; confirm the internal sofia profile binds `ws-binding`/`wss-binding` and nginx proxies `/verto` → `127.0.0.1:8081`. |
 | Agent not answering | `sudo tail -f /opt/xcall/ai-agent/logs/xcall-agent.log` and confirm ESL password matches `event_socket.conf.xml`. |
 | Local model not detected | The AI server must be running and reachable from the PBX host; press **Detect** again. |
 
@@ -102,8 +110,10 @@ sudo bash deploy/bootstrap.sh   # idempotent — re-applies config
 - Debian 12 (bookworm), 2 vCPU / 2 GB RAM minimum
   (4 GB+ if running a local LLM on the same box).
 - Root access or a sudo user.
-- Ports opened: 22, 80, 443, 5060 (udp/tcp), 5080, 8081, 8082, 16384–16484/udp.
-- The installer configures UFW automatically; adjust in your cloud's security
-  group to match.
+- Ports opened: 22, 80, 443, 5060 (udp/tcp), 5080, 8081, 8082, 8083, 8084,
+  16384–16484/udp. The installer configures UFW automatically; adjust in your
+  cloud's security group to match.
+- For the default (source-built) FreeSWITCH: 4 GB RAM recommended (compiling
+  on 2 GB works but is slower).
 
 See `docs/SETUP.md` and `docs/VPS_HOSTING.md` for deep-dive operations.

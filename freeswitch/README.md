@@ -14,14 +14,14 @@ freeswitch/conf/
 │   ├── acl.conf.xml                  # ACLs (xcall.auto subnet)
 │   ├── event_socket.conf.xml         # ESL for the AI agent
 │   ├── modules.conf.xml              # module load list
-│   └── verto.conf.xml                # WebRTC (verto) endpoint
+│   └── verto.conf.xml                # verto.js endpoint (optional, 8083/8084)
 ├── dialplan/
 │   ├── xcall_ai.xml                  # AI agent context (park + identify)
 │   └── xcall_default.xml             # default context (specialist, internal)
 ├── directory/
 │   └── xcall_users.xml               # users/extensions (e.g. specialist 7000)
 └── sip_profiles/
-    └── internal.xml                  # internal SIP profile (WebRTC friendly)
+    └── internal.xml                  # internal SIP profile (SIP-over-WS + WebRTC)
 ```
 
 ## Installation

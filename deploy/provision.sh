@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================ #
-#  XCall — self-contained Debian 12 provisioner
+#  XCall - self-contained Debian 12 provisioner
 #
 #  Installs the complete XCall system from a bare VPS:
 #    FreeSWITCH + FusionPBX portal (rebranded "XCall") + admin panel
@@ -18,6 +18,9 @@
 #    --email <addr>           Let's Encrypt contact email (default: none -> self-signed)
 #    --install-dir <path>     repo location (default: /opt/xcall)
 #    --skip-ai                skip the AI agent install (still installs the panel)
+#    --signalwire-token <tok> free token from https://signalwire.com -> fast
+#                             FreeSWITCH apt install. Without it FreeSWITCH is
+#                             built from source (self-contained, ~30-60 min).
 #
 #  Debian 12 (bookworm) is required. Tested on x86_64; arm64 uses the same path.
 # ============================================================================ #
@@ -36,6 +39,7 @@ ESL_PASS="ClueCon"
 EMAIL=""
 INSTALL_DIR="/opt/xcall"
 SKIP_AI=0
+SW_TOKEN=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -46,6 +50,7 @@ while [ $# -gt 0 ]; do
         --email)       EMAIL="${2:-}"; shift 2 ;;
         --install-dir) INSTALL_DIR="${2:-}"; shift 2 ;;
         --skip-ai)     SKIP_AI=1; shift ;;
+        --signalwire-token) SW_TOKEN="${2:-}"; shift 2 ;;
         -h|--help)     grep -E '^\s*--' "$0"; exit 0 ;;
         *) die "unknown argument: $1 (see --help)" ;;
     esac
@@ -59,7 +64,7 @@ if [ -f /etc/os-release ]; then
     . /etc/os-release
 fi
 if [ "${VERSION_CODENAME:-}" != "bookworm" ]; then
-    warn "Detected $PRETTY_NAME — this installer targets Debian 12 (bookworm)."
+    warn "Detected $PRETTY_NAME - this installer targets Debian 12 (bookworm)."
     warn "Continue anyway? (y/N)"
     read -r CONTINUE
     [ "${CONTINUE:-n}" = "y" ] || die "aborted"
@@ -93,14 +98,228 @@ apt-get install -y -qq \
     2>&1 | tail -n 2
 
 # ---------------- FreeSWITCH ----------------------------------------------- #
+# FreeSWITCH no longer ships through a public anonymous apt repo:
+#   - files.freeswitch.org   -> now requires a SignalWire login (HTTP 401)
+#   - pkg.signalwire.com     -> public repo retired (HTTP 404)
+# Install paths (first match wins):
+#   1. --signalwire-token -> official SignalWire apt repo (fast; free token
+#                            from https://signalwire.com)
+#   2. build from source  -> fully self-contained (default, no auth needed)
+install_freeswitch() {
+    if [ -n "$SW_TOKEN" ]; then
+        log "installing FreeSWITCH from the SignalWire apt repo (token)"
+        wget -q --http-user=signalwire --http-password="$SW_TOKEN" \
+            -O /usr/share/keyrings/signalwire-freeswitch-repo.gpg \
+            https://freeswitch.signalwire.com/repo/deb/debian-release/signalwire-freeswitch-repo.gpg \
+            || die "could not download the SignalWire FreeSWITCH keyring (is the token valid?)"
+        echo "machine freeswitch.signalwire.com login signalwire password $SW_TOKEN" > /etc/apt/auth.conf
+        chmod 600 /etc/apt/auth.conf
+        echo "deb [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ bookworm main" \
+            > /etc/apt/sources.list.d/freeswitch.list
+        apt-get update -qq
+        apt-get install -y -qq freeswitch-meta-all 2>&1 | tail -n 2
+        return 0
+    fi
+
+    # legacy public repo (if it ever returns, the key must verify as real PGP)
+    if wget -q -O /tmp/xcall-fs-key.asc \
+            https://files.freeswitch.org/repo/deb/debian-release/fsstretch-archive-keyring.asc \
+        && gpg --dearmor --output /usr/share/keyrings/freeswitch.gpg /tmp/xcall-fs-key.asc 2>/dev/null; then
+        echo "deb [signed-by=/usr/share/keyrings/freeswitch.gpg] http://files.freeswitch.org/repo/deb/debian-release/ bookworm main" \
+            > /etc/apt/sources.list.d/freeswitch.list
+        if apt-get update -qq 2>/dev/null && apt-get install -y -qq freeswitch-meta-all 2>&1 | tail -n 2; then
+            return 0
+        fi
+        rm -f /etc/apt/sources.list.d/freeswitch.list /etc/apt/auth.conf
+    fi
+
+    warn "FreeSWITCH package repos are not anonymously reachable right now."
+    warn "building FreeSWITCH 1.10.12 from source - no token needed, but it"
+    warn "takes ~30-60 min on a 2 vCPU VPS. To use the fast official repo"
+    warn "instead, create a free account at https://signalwire.com and pass"
+    warn "--signalwire-token '<token>' to bootstrap.sh."
+    build_freeswitch_from_source
+}
+
+build_freeswitch_from_source() {
+    local JOBS
+    JOBS=$(nproc)
+    log "FreeSWITCH source build ($JOBS parallel jobs)"
+
+    # build dependencies (Debian 12 bookworm)
+    apt-get install -y -qq \
+        autoconf automake devscripts g++ libncurses-dev libtool libtool-bin make \
+        libjpeg-dev pkg-config flac libgdbm-dev libdb-dev gettext equivs git dpkg-dev \
+        libpq-dev liblua5.2-dev libtiff5-dev libperl-dev libcurl4-openssl-dev \
+        libsqlite3-dev libspeexdsp-dev libspeex-dev libldns-dev libedit-dev libopus-dev \
+        libmemcached-dev libshout3-dev libmpg123-dev libmp3lame-dev yasm nasm \
+        libsndfile1-dev libuv1-dev libvpx-dev libavformat-dev libswscale-dev sox \
+        libsox-fmt-all cmake uuid-dev libssl-dev libsrtp2-dev libavcodec-dev \
+        libavutil-dev 2>&1 | tail -n 1
+
+    # libks - needed by mod_verto (WebRTC websocket endpoint)
+    if [ ! -d /usr/src/libks/.git ]; then
+        log "building libks"
+        git clone -q https://github.com/signalwire/libks.git /usr/src/libks
+        cmake -S /usr/src/libks -B /usr/src/libks/build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local >/dev/null
+        cmake --build /usr/src/libks/build -j "$JOBS" >/dev/null
+        cmake --install /usr/src/libks/build >/dev/null
+        ldconfig
+    fi
+    export C_INCLUDE_PATH=/usr/include/libks
+
+    # sofia-sip - SIP stack with WebSocket support (mod_sofia + mod_verto)
+    if [ ! -d /usr/src/sofia-sip/.git ]; then
+        log "building sofia-sip v1.13.11"
+        git clone -q https://github.com/freeswitch/sofia-sip.git /usr/src/sofia-sip
+        cd /usr/src/sofia-sip
+        git checkout -q v1.13.11
+        sh autogen.sh >/dev/null 2>&1
+        ./configure --enable-debug >/dev/null 2>&1
+        make -j "$JOBS" >/dev/null 2>&1
+        make install >/dev/null 2>&1
+        ldconfig
+        cd /
+    fi
+
+    # spandsp - fax / tone DSP (FusionPBX's pinned commit)
+    if [ ! -d /usr/src/spandsp/.git ]; then
+        log "building spandsp"
+        git clone -q https://github.com/freeswitch/spandsp.git /usr/src/spandsp
+        cd /usr/src/spandsp
+        git reset --hard 0d2e6ac65e0e8f53d652665a743015a88bf048d4 >/dev/null
+        sh autogen.sh >/dev/null 2>&1
+        ./configure --enable-debug >/dev/null 2>&1
+        make -j "$JOBS" >/dev/null 2>&1
+        make install >/dev/null 2>&1
+        ldconfig
+        cd /
+    fi
+
+    # FreeSWITCH itself - the fusionpbx fork is exactly what FusionPBX supports
+    if [ ! -d /usr/src/freeswitch-1.10.12/.git ]; then
+        log "cloning FreeSWITCH 1.10.12 (fusionpbx fork)"
+        git clone -q https://github.com/fusionpbx/freeswitch.git /usr/src/freeswitch-1.10.12
+        cd /usr/src/freeswitch-1.10.12
+        git checkout -q v1.10.12
+    fi
+    cd /usr/src/freeswitch-1.10.12
+
+    log "bootstrapping build system (bundled apr/srtp + autotools)"
+    ./bootstrap.sh -j >/tmp/xcall-fs-bootstrap.log 2>&1 || {
+        tail -n 40 /tmp/xcall-fs-bootstrap.log >&2
+        die "FreeSWITCH bootstrap failed (log: /tmp/xcall-fs-bootstrap.log)"
+    }
+
+    # enable the modules FusionPBX + XCall need (mod_verto stays on - libks is built)
+    sed -i modules.conf \
+        -e 's:#applications/mod_callcenter:applications/mod_callcenter:' \
+        -e 's:#applications/mod_cidlookup:applications/mod_cidlookup:' \
+        -e 's:#applications/mod_memcache:applications/mod_memcache:' \
+        -e 's:#applications/mod_nibblebill:applications/mod_nibblebill:' \
+        -e 's:#applications/mod_curl:applications/mod_curl:' \
+        -e 's:#applications/mod_translate:applications/mod_translate:' \
+        -e 's:#applications/mod_avmd:applications/mod_avmd:' \
+        -e 's:#formats/mod_shout:formats/mod_shout:' \
+        -e 's:#say/mod_say_es:say/mod_say_es:' \
+        -e 's:#say/mod_say_fr:say/mod_say_fr:'
+    # mod_signalwire needs libsignalwire-c (not installed) - disable like FusionPBX
+    sed -i modules.conf \
+        -e 's:^applications/mod_signalwire:#applications/mod_signalwire:' \
+        -e 's:^endpoints/mod_skinny:#endpoints/mod_skinny:'
+
+    log "configuring FreeSWITCH"
+    ./configure -C --enable-portable-binary --disable-dependency-tracking --enable-debug \
+        --prefix=/usr --localstatedir=/var --sysconfdir=/etc \
+        --with-openssl --enable-core-pgsql-support >/tmp/xcall-fs-config.log 2>&1 || {
+        tail -n 40 /tmp/xcall-fs-config.log >&2
+        die "FreeSWITCH configure failed (log: /tmp/xcall-fs-config.log)"
+    }
+
+    log "compiling FreeSWITCH - this is the long step (~$JOBS jobs)"
+    make -j "$JOBS" >/tmp/xcall-fs-make.log 2>&1 || {
+        tail -n 60 /tmp/xcall-fs-make.log >&2
+        die "FreeSWITCH make failed (log: /tmp/xcall-fs-make.log)"
+    }
+    make install >/tmp/xcall-fs-install.log 2>&1 || {
+        tail -n 40 /tmp/xcall-fs-install.log >&2
+        die "FreeSWITCH make install failed (log: /tmp/xcall-fs-install.log)"
+    }
+    mkdir -p /var/lib/freeswitch/storage/voicemail
+    ldconfig
+
+    # sounds (callie) + music-on-hold - still public on files.freeswitch.org
+    log "installing FreeSWITCH sounds + music"
+    mkdir -p /usr/share/freeswitch/sounds
+    cd /usr/share/freeswitch/sounds
+    for rate in 48000 32000 16000 8000; do
+        wget -q "https://files.freeswitch.org/releases/sounds/freeswitch-sounds-en-us-callie-${rate}-1.0.53.tar.gz"
+        tar xzf "freeswitch-sounds-en-us-callie-${rate}-1.0.53.tar.gz"
+        rm -f "freeswitch-sounds-en-us-callie-${rate}-1.0.53.tar.gz"
+    done
+    mkdir -p music
+    cd music
+    for rate in 48000 32000 16000 8000; do
+        wget -q "https://files.freeswitch.org/releases/sounds/freeswitch-sounds-music-${rate}-1.0.52.tar.gz"
+        tar xzf "freeswitch-sounds-music-${rate}-1.0.52.tar.gz"
+        rm -f "freeswitch-sounds-music-${rate}-1.0.52.tar.gz"
+    done
+    [ -d music ] && mv music default
+    cd /
+
+    # systemd unit (FusionPBX model: runs as www-data so the portal manages config)
+    log "installing FreeSWITCH systemd unit"
+    cat > /lib/systemd/system/freeswitch.service <<'UNIT'
+[Unit]
+Description=freeswitch (XCall)
+Wants=network-online.target
+Requires=network.target local-fs.target
+After=network.target network-online.target local-fs.target postgresql.service
+
+[Service]
+Type=forking
+PIDFile=/run/freeswitch/freeswitch.pid
+Environment="DAEMON_OPTS=-nonat"
+Environment="USER=www-data"
+Environment="GROUP=www-data"
+EnvironmentFile=-/etc/default/freeswitch
+ExecStartPre=/bin/mkdir -p /var/run/freeswitch
+ExecStartPre=/bin/chown -R ${USER}:${GROUP} /var/lib/freeswitch /var/log/freeswitch /etc/freeswitch /usr/share/freeswitch /var/run/freeswitch
+ExecStartPre=/bin/sleep 10
+ExecStart=/usr/bin/freeswitch -u ${USER} -g ${GROUP} -ncwait ${DAEMON_OPTS}
+TimeoutSec=45s
+Restart=always
+LimitCORE=infinity
+LimitNOFILE=100000
+LimitNPROC=60000
+LimitSTACK=250000
+LimitRTPRIO=infinity
+LimitRTTIME=infinity
+IOSchedulingClass=realtime
+IOSchedulingPriority=2
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=89
+UMask=0007
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+    echo 'DAEMON_OPTS="-nonat"' > /etc/default/freeswitch
+    systemctl daemon-reload
+    systemctl unmask freeswitch.service 2>/dev/null || true
+    systemctl enable freeswitch >/dev/null 2>&1 || true
+
+    # FusionPBX manages /etc/freeswitch from php-fpm (www-data)
+    chown -R www-data:www-data /etc/freeswitch /var/lib/freeswitch \
+        /usr/share/freeswitch /var/log/freeswitch /var/run/freeswitch 2>/dev/null || true
+
+    log "FreeSWITCH 1.10.12 source build complete"
+}
+
 if ! command -v freeswitch >/dev/null 2>&1; then
-    log "installing FreeSWITCH (official Debian repo)"
-    wget -q -O - https://files.freeswitch.org/repo/deb/debian-release/fsstretch-archive-keyring.asc \
-        | gpg --dearmor -o /usr/share/keyrings/freeswitch.gpg
-    echo "deb [signed-by=/usr/share/keyrings/freeswitch.gpg] http://files.freeswitch.org/repo/deb/debian-release/ bookworm main" \
-        > /etc/apt/sources.list.d/freeswitch.list
-    apt-get update -qq
-    apt-get install -y -qq freeswitch-meta-all freeswitch-all-dbg 2>&1 | tail -n 2
+    install_freeswitch
 fi
 log "FreeSWITCH: $(freeswitch -version 2>/dev/null | head -n1 || echo installed)"
 
@@ -267,7 +486,7 @@ if [ -d "$INSTALL_DIR/freeswitch/conf" ]; then
     cp -R "$INSTALL_DIR/freeswitch/conf/." "$FS_CONF/"
 fi
 
-# TLS for verto (wss) — self-signed unless a real cert is installed later
+# TLS for verto (wss) - self-signed unless a real cert is installed later
 if [ ! -f "$FS_CONF/tls/wss.pem" ]; then
     openssl req -x509 -newkey rsa:2048 -keyout "$FS_CONF/tls/wss.key" \
         -out "$FS_CONF/tls/wss.pem" -days 825 -nodes \
@@ -334,12 +553,13 @@ server {
     ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
     ssl_protocols TLSv1.2 TLSv1.3;
 
-    # verto WebSocket (wss) for the softphone
+    # web softphone WebSocket (SIP over WS via mod_sofia on 8081; TLS at nginx)
     location /verto {
-        proxy_pass http://127.0.0.1:8082;
+        proxy_pass http://127.0.0.1:8081;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
         proxy_read_timeout 86400;
     }
 
@@ -368,9 +588,9 @@ rm -f /etc/nginx/sites-enabled/default
 sed -i 's/# server_tokens off;/server_tokens off;/' /etc/nginx/nginx.conf 2>/dev/null || true
 
 systemctl enable nginx
-nginx -t 2>/dev/null && systemctl restart nginx || warn "nginx config check failed — review /etc/nginx/sites-available/xcall"
+nginx -t 2>/dev/null && systemctl restart nginx || warn "nginx config check failed - review /etc/nginx/sites-available/xcall"
 
-# Let's Encrypt (optional) — replaces the self-signed cert if an email is given
+# Let's Encrypt (optional) - replaces the self-signed cert if an email is given
 if [ -n "$EMAIL" ]; then
     log "provisioning Let's Encrypt certificate for $DOMAIN"
     apt-get install -y -qq certbot python3-certbot-nginx 2>&1 | tail -n 1
@@ -388,8 +608,10 @@ ufw allow 5060/udp >/dev/null 2>&1
 ufw allow 5060/tcp >/dev/null 2>&1
 ufw allow 5080/udp >/dev/null 2>&1
 ufw allow 5080/tcp >/dev/null 2>&1
-ufw allow 8081/tcp >/dev/null 2>&1    # verto ws
-ufw allow 8082/tcp >/dev/null 2>&1    # verto wss
+ufw allow 8081/tcp >/dev/null 2>&1    # softphone ws (SIP over WebSocket)
+ufw allow 8082/tcp >/dev/null 2>&1    # softphone wss (direct, self-signed)
+ufw allow 8083/tcp >/dev/null 2>&1    # verto ws (verto.js clients, optional)
+ufw allow 8084/tcp >/dev/null 2>&1    # verto wss (verto.js clients, optional)
 ufw allow 16384:16484/udp >/dev/null 2>&1  # RTP media
 ufw --force enable >/dev/null 2>&1 || true
 

@@ -31,9 +31,11 @@ the portal — there is no desktop app.
 
 ### 1. FreeSWITCH (`freeswitch/`)
 - **`mod_sofia`** — SIP endpoints (internal profile, WebRTC-friendly with
-  ICE/DTLS-SRTP).
-- **`mod_verto`** — WebRTC WebSocket endpoint (8081 ws / 8082 wss) used by the
-  web softphone.
+  ICE/DTLS-SRTP) **and** the SIP-over-WebSocket listener (RFC 7118) the
+  in-browser softphone registers on (8081 ws / 8082 wss, via nginx `/verto`).
+- **`mod_verto`** — optional verto.js JSON-protocol endpoint (8083 ws / 8084
+  wss) for FusionPBX's classic communicator; the XCall softphone uses SIP.js
+  over mod_sofia instead.
 - **`mod_event_socket`** — ESL (8021) that the AI agent drives.
 - **Dialplan**:
   - `xcall_ai` context — inbound calls destined for the bot are answered,

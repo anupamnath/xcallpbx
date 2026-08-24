@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    XCall — verto (WebRTC) configuration.
+    XCall - verto (WebRTC) configuration.
 
-    The XCall web softphone registers over the verto WebSocket, so clients can
-    make/receive calls right from the browser after logging into the portal.
+    The XCall web softphone uses SIP.js (SIP over WebSocket) and registers on
+    the internal sofia profile's ws/wss bindings (8081/8082). This verto.conf
+    serves verto.js-protocol clients (e.g. FusionPBX's communicator) on the
+    secondary ports below.
 
-    - insecure (ws) on ${verto_port}  (8081)
-    - secure   (wss) on ${verto_port_secure} (8082), needs certificates
+    - insecure (ws) on ${verto_port}  (8083)
+    - secure   (wss) on ${verto_port_secure} (8084), needs certificates
 
     The portal reverse proxy (nginx/caddy) can also terminate TLS and forward
     to the insecure port.

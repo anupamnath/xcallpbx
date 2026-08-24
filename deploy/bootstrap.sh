@@ -10,6 +10,12 @@
 #      sudo bash -s -- --domain pbx.example.com --admin-pass 'Str0ngPass' \
 #                        --db-pass 'DbPass' --esl-pass 'ClueCon' --email you@example.com
 #
+#  FreeSWITCH note: the old public apt repos (files.freeswitch.org) now require
+#  a SignalWire login, so by default FreeSWITCH is built from source
+#  (~30-60 min). To use the fast official repo instead, pass a free token from
+#  https://signalwire.com:
+#      ... | sudo bash -s -- --signalwire-token '<token>' --domain pbx.example.com
+#
 #  This script:
 #    1. installs git + curl
 #    2. clones the XCall repo to /opt/xcall

@@ -85,6 +85,13 @@ This installs **FreeSWITCH + FusionPBX (rebranded XCall) + the admin panel +
 AI Assistant manager + WebRTC softphone + AI voice agent** from a bare box,
 then configures nginx (TLS), the firewall, and the systemd services.
 
+> **FreeSWITCH packaging note.** The legacy public apt repo
+> (`files.freeswitch.org`) now requires a SignalWire login, so the installer
+> **builds FreeSWITCH 1.10.12 from source** by default (self-contained,
+> ~30–60 min). To use the fast official package repo instead, grab a free
+> token from https://signalwire.com and add
+> `--signalwire-token '<token>'` to the command above.
+
 Full syntax and first-login steps: **[docs/VPS_DEPLOY.md](docs/VPS_DEPLOY.md)**.
 
 See [docs/SETUP.md](docs/SETUP.md) for the step-by-step guide (Docker and bare-metal),

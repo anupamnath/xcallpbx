@@ -17,9 +17,12 @@
     <X-PRE-PROCESS cmd="set" data="internal_tls_port=5061"/>
     <X-PRE-PROCESS cmd="set" data="external_tls_port=5081"/>
 
-    <!-- WebRTC (verto) -->
-    <X-PRE-PROCESS cmd="set" data="verto_port=8081"/>
-    <X-PRE-PROCESS cmd="set" data="verto_port_secure=8082"/>
+    <!-- WebRTC (SIP over WebSocket for the SIP.js web softphone) -->
+    <X-PRE-PROCESS cmd="set" data="internal_ws_port=8081"/>
+    <X-PRE-PROCESS cmd="set" data="internal_wss_port=8082"/>
+    <!-- verto.js protocol endpoint (optional - not used by the SIP.js softphone) -->
+    <X-PRE-PROCESS cmd="set" data="verto_port=8083"/>
+    <X-PRE-PROCESS cmd="set" data="verto_port_secure=8084"/>
     <X-PRE-PROCESS cmd="set" data="verto_ssl_certdir=$${base_dir}/conf/ssl"/>
 
     <!-- Codecs -->

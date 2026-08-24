@@ -31,7 +31,7 @@ $extension   = $_SESSION['extension'] ?? $username;
 
 $settings = new settings(['database' => $database, 'domain_uuid' => $domain_uuid]);
 
-// WebSocket / verto endpoint the browser will dial into.
+// WebSocket endpoint the browser will dial into.
 // These come from the domain settings (verto) or from this file's constants.
 $ws_server      = $settings->get('domain', 'verto_ws_address', '');
 $ws_port        = $settings->get('domain', 'verto_ws_port', '8081');
@@ -43,11 +43,12 @@ if (empty($ws_server)) {
     $ws_server = $_SERVER['HTTP_HOST'] ?? '';
 }
 
-$scheme = 'ws';
-$port   = $ws_port;
+$ws_url = 'ws://' . $ws_server . ':' . $ws_port;
 if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-    $scheme = 'wss';
-    $port   = $ws_secure_port;
+    // Same-origin TLS path through the portal reverse proxy
+    // (nginx /verto -> FreeSWITCH SIP-over-WebSocket). This avoids the browser
+    // rejecting FreeSWITCH's self-signed WebSocket certificate.
+    $ws_url = 'wss://' . $ws_server . '/verto';
 }
 
 $user_row = null;
@@ -72,8 +73,8 @@ echo json_encode([
     'password'   => $user_password,
     'displayName'=> $user_row['user_caller_id_name'] ?? ($_SESSION['user_caller_id_name'] ?? ''),
     'callerId'   => $user_row['user_caller_id_number'] ?? ($_SESSION['user_caller_id_number'] ?? ''),
-    'ws'         => $scheme . '://' . $ws_server . ':' . $port,
-    'scheme'     => $scheme,
-    'wsPort'     => (int)$port,
+    'ws'         => $ws_url,
+    'scheme'     => (strpos($ws_url, 'wss://') === 0) ? 'wss' : 'ws',
+    'wsPort'     => (int)$ws_port,
     'verto'      => (bool)$settings->get('domain', 'web_rtc_enabled', false),
 ], JSON_PRETTY_PRINT);
