@@ -510,13 +510,13 @@ server {
 
     location ~ \\.php\$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php\$PHP_VERSION-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php$PHP_VERSION-fpm.sock;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
         fastcgi_read_timeout 15m;
     }
     location = /core/upgrade/index.php {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php\$PHP_VERSION-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php$PHP_VERSION-fpm.sock;
         fastcgi_read_timeout 15m;
     }
     location ~ /\\. { deny all; }
@@ -526,15 +526,19 @@ EOF
 ln -sf /etc/nginx/sites-available/xcall /etc/nginx/sites-enabled/xcall
 rm -f /etc/nginx/sites-enabled/fusionpbx /etc/nginx/sites-enabled/default
 
-nginx -t 2>/dev/null && systemctl restart nginx || warn "nginx config check failed - review /etc/nginx/sites-available/xcall"
-
-# Let's Encrypt (optional) - replaces the self-signed cert if an email is given
-if [ -n "$EMAIL" ]; then
-    log "provisioning Let's Encrypt certificate for $DOMAIN"
-    apt-get install -y -qq certbot python3-certbot-nginx 2>&1 | tail -n 1
-    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect \
-        || warn "certbot failed (ensure DNS A record for $DOMAIN points at this server)"
+if nginx -t 2>/dev/null; then
     systemctl restart nginx
+
+    # Let's Encrypt (optional) - replaces the self-signed cert if an email is given
+    if [ -n "$EMAIL" ]; then
+        log "provisioning Let's Encrypt certificate for $DOMAIN"
+        apt-get install -y -qq certbot python3-certbot-nginx 2>&1 | tail -n 1
+        certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL" --redirect \
+            || warn "certbot failed (ensure DNS A record for $DOMAIN points at this server)"
+        systemctl restart nginx
+    fi
+else
+    warn "nginx config check failed - review /etc/nginx/sites-available/xcall (nginx -t)"
 fi
 
 # ---------------- firewall (iptables, on top of the installer's rules) ----- #
