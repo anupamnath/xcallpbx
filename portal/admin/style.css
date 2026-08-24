@@ -75,3 +75,44 @@
 }
 .sp-line { font-size: 14px; color: var(--x-c-text); }
 .sp-line small { display: block; color: var(--x-c-muted); font-size: 12px; }
+
+/* ---- admin topbar ---- */
+.xcall-subtitle { margin: 2px 0 0; font-size: 13px; color: var(--x-c-muted); }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+/* ---- sidebar: pin the account footer to the bottom ---- */
+.xcall-sidebar { display: flex; flex-direction: column; }
+.xcall-sidebar-footer {
+  margin-top: auto;
+  padding: 14px 20px;
+  border-top: 1px solid #1e293b;
+  font-size: 12px;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.xcall-sidebar-footer a { color: var(--x-c-cyan); text-decoration: none; font-weight: 600; }
+.xcall-sidebar-footer a:hover { text-decoration: underline; }
+
+/* ---- dashboard stats ---- */
+.xcall-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  margin: 0 0 26px;
+}
+.xcall-stat {
+  background: #fff;
+  border: 1px solid var(--x-c-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.xcall-stat .stat-num { font-size: 26px; font-weight: 800; color: var(--x-c-accent); line-height: 1.1; }
+.xcall-stat .stat-label {
+  font-size: 11px; color: var(--x-c-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px;
+}
+.stat-trunc {
+  font-size: 15px !important;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}

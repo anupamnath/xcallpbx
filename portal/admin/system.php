@@ -25,6 +25,7 @@ $company = $database->select(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>System &amp; Company — XCall Admin</title>
+<link rel="stylesheet" href="../ai-assistant/style.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="xcall-ai">
@@ -42,11 +43,18 @@ $company = $database->select(
       <a href="../webphone/index.html">Web Softphone</a>
       <a href="../../core/dashboard/">Back to Portal</a>
     </nav>
+    <div class="xcall-sidebar-footer">
+      <span>Signed in as <strong><?= htmlspecialchars($_SESSION["username"] ?? "guest") ?></strong></span>
+      <a href="<?= PROJECT_PATH ?>/logout.php">Log out</a>
+    </div>
   </aside>
 
   <main class="xcall-main">
     <div class="xcall-topbar">
-      <h1>System &amp; Company</h1>
+      <div>
+        <h1>System &amp; Company</h1>
+        <p class="xcall-subtitle">Name the system, set the brand palette, and enter company details.</p>
+      </div>
       <button class="xcall-btn xcall-btn-primary" id="saveBtn">Save changes</button>
     </div>
 

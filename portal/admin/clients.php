@@ -18,6 +18,7 @@ if (empty($_SESSION["username"])) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Clients — XCall Admin</title>
+<link rel="stylesheet" href="../ai-assistant/style.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="xcall-ai">
@@ -35,11 +36,18 @@ if (empty($_SESSION["username"])) {
       <a href="../webphone/index.html">Web Softphone</a>
       <a href="../../core/dashboard/">Back to Portal</a>
     </nav>
+    <div class="xcall-sidebar-footer">
+      <span>Signed in as <strong><?= htmlspecialchars($_SESSION["username"] ?? "guest") ?></strong></span>
+      <a href="<?= PROJECT_PATH ?>/logout.php">Log out</a>
+    </div>
   </aside>
 
   <main class="xcall-main">
     <div class="xcall-topbar">
-      <h1>Clients</h1>
+      <div>
+        <h1>Clients</h1>
+        <p class="xcall-subtitle">Maintain contacts, companies, notes and status for your clients.</p>
+      </div>
       <button class="xcall-btn xcall-btn-primary" id="addBtn">+ Add client</button>
     </div>
 

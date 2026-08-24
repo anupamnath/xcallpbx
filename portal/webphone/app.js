@@ -2,7 +2,9 @@
  *
  * Uses SIP.js (0.15.x UMD) to register a SIP over WebSocket client to
  * FreeSWITCH, letting the agent make/receive calls from the portal after
- * login. Configuration is fetched from config.php (logged-in session).
+ * login. Configuration is fetched from config.php (logged-in session), or the
+ * user can register manually (ViciBox-style) with extension + password +
+ * domain + WSS server.
  *
  * Requires the browser to allow microphone access (getUserMedia) and the
  * page to be served over HTTPS (or localhost) — WebRTC demands a secure
@@ -15,12 +17,13 @@
   // ------------------------------------------------------------------ //
   // state
   // ------------------------------------------------------------------ //
-  var user = { registered: false };
+  var user = { registered: false, ua: null, cfg: null, mode: 'portal' };
   var session = null;        // active SIP.js InviteClientContext
   var timers = { tick: null };
   var callStart = null;
   var muted = false;
   var onHold = false;
+  var regInProgress = false;
 
   // ------------------------------------------------------------------ //
   // dom helpers
@@ -51,6 +54,33 @@
   }
 
   // ------------------------------------------------------------------ //
+  // registrar panel (account + registration state)
+  // ------------------------------------------------------------------ //
+  function setRegState(state, reason) {
+    var dot = $('regDot');
+    dot.className = 'reg-dot';
+    if (state === 'Registered') { dot.classList.add('dot-ok'); }
+    else if (state === 'Registering…' || state === 'Retrying…') { dot.classList.add('dot-busy'); }
+    else if (state === 'Failed' || state === 'Error') { dot.classList.add('dot-err'); }
+    else { dot.classList.add('dot-off'); }
+    $('regState').textContent = state;
+    show($('regReason'), !!reason);
+    if (reason) { $('regReason').textContent = reason; }
+  }
+
+  function setRegistrar(cfg) {
+    $('regExtension').textContent = (cfg && (cfg.extension || cfg.username)) || '—';
+    var server = (cfg && cfg.domain) || '';
+    if (!server && cfg && cfg.ws) { server = cfg.ws.replace(/^wss?:\/\//, ''); }
+    $('regServer').textContent = server || '—';
+  }
+
+  function setRegistered(on) {
+    user.registered = on;
+    $('numberInput').disabled = !on;
+  }
+
+  // ------------------------------------------------------------------ //
   // duration ticker
   // ------------------------------------------------------------------ //
   function startTicker() {
@@ -68,12 +98,19 @@
     if (timers.tick) { clearInterval(timers.tick); timers.tick = null; }
     $('callDuration').textContent = '00:00';
   }
-
-
   // ------------------------------------------------------------------ //
   // SIP.js glue
   // ------------------------------------------------------------------ //
+  function destroyUA() {
+    if (user.ua) {
+      try { user.ua.stop(); } catch (e) { /* already stopped */ }
+      user.ua = null;
+    }
+    user.registered = false;
+  }
+
   function makeUA(cfg) {
+    destroyUA();
     var uri = 'sip:' + cfg.username + '@' + cfg.domain;
 
     var ua = new SIP.UA({
@@ -91,23 +128,36 @@
       viaHost: cfg.domain,
       contactParams: ';transport=wss'
     });
+    user.ua = ua;
 
     ua.on('registered', function () {
-      user.registered = true;
-      setStatus('Ready — ' + cfg.extension, 'ok');
-      log('Registered as ' + cfg.extension + ' (' + cfg.domain + ')');
-      $('numberInput').disabled = false;
+      regInProgress = false;
+      setRegistered(true);
+      setRegState('Registered', '');
+      setStatus('Ready — ' + (cfg.extension || cfg.username), 'ok');
+      log('Registered as ' + (cfg.extension || cfg.username) + ' @ ' + cfg.domain);
     });
 
     ua.on('unregistered', function () {
-      user.registered = false;
-      setStatus('Offline', 'warn');
+      setRegistered(false);
+      if (regInProgress) {
+        setRegState('Registering…');
+        setStatus('Registering…', 'warn');
+      } else {
+        setRegState('Offline', 'registration expired — press Retry');
+        setStatus('Offline', 'warn');
+      }
     });
 
-    ua.on('registrationFailed', function () {
-      user.registered = false;
+    ua.on('registrationFailed', function (e) {
+      regInProgress = false;
+      setRegistered(false);
+      var cause = '';
+      if (e) { cause = String(e.cause || e.reason || ''); }
+      if (!cause) { cause = 'check credentials and WSS endpoint'; }
+      setRegState('Failed', cause);
       setStatus('Registration failed', 'err');
-      log('SIP registration failed — check password / WSS endpoint');
+      log('SIP registration failed — ' + cause);
     });
 
     ua.on('invite', function (incoming) {
@@ -117,14 +167,97 @@
       startTicker();
       show($('hangupBtn'), true);
       log('Incoming call from ' + incoming.remoteIdentity.uri.user);
-      // auto-answer is optional; uncomment to auto-accept specialist calls:
-      // incoming.accept();
     });
 
     return ua;
   }
 
   function currentUA() { return user.ua; }
+
+  // ------------------------------------------------------------------ //
+  // registration control
+  // ------------------------------------------------------------------ //
+  function registerWith(cfg) {
+    user.cfg = cfg;
+    setRegistrar(cfg);
+    setRegistered(false);
+    regInProgress = true;
+    setRegState('Registering…');
+    setStatus('Registering…', 'warn');
+    log('Registering ' + (cfg.extension || cfg.username) + ' @ ' + cfg.domain + ' (' + cfg.ws + ')');
+    user.ua = makeUA(cfg);
+  }
+
+  function loadPortalConfig() {
+    setStatus('Loading config…');
+    setRegState('Offline', '');
+    fetch('config.php')
+      .then(function (r) {
+        return r.json().then(function (data) {
+          return { ok: r.ok, status: r.status, data: data };
+        });
+      })
+      .then(function (res) {
+        if (!res.ok) {
+          var e = new Error((res.data && res.data.error) || 'auth required');
+          e.status = res.status;
+          throw e;
+        }
+        var cfg = res.data;
+        if (!cfg.username || !cfg.ws) { throw new Error('no SIP credentials in portal session'); }
+        user.mode = 'portal';
+        show($('authNotice'), false);
+        registerWith(cfg);
+      })
+      .catch(function (err) {
+        if (err && err.status === 401) {
+          setRegistered(false);
+          setRegState('Offline', 'not logged in');
+          setStatus('Not logged in', 'err');
+          setRegistrar({ extension: '', domain: window.location.hostname });
+          show($('authNotice'), true);
+          log('Not logged in — log into the XCall portal, or use manual setup below.');
+        } else {
+          setRegState('Error', err && err.message ? err.message : 'config load failed');
+          setStatus('Config error', 'err');
+          log('Config error: ' + (err && err.message ? err.message : err));
+        }
+      });
+  }
+  // ------------------------------------------------------------------ //
+  // manual setup
+  // ------------------------------------------------------------------ //
+  function manualValues() {
+    return {
+      extension: $('mExt').value.trim(),
+      username: $('mExt').value.trim(),
+      password: $('mPass').value,
+      domain: $('mDomain').value.trim(),
+      ws: $('mWs').value.trim(),
+      displayName: 'XCall Agent'
+    };
+  }
+
+  function saveManual(cfg) {
+    try { localStorage.setItem('xcall_manual', JSON.stringify(cfg)); } catch (e) { /* private mode */ }
+  }
+
+  function loadManual() {
+    try { return JSON.parse(localStorage.getItem('xcall_manual') || 'null'); } catch (e) { return null; }
+  }
+
+  function registerManual(cfg) {
+    if (!cfg.extension || !cfg.password || !cfg.domain || !cfg.ws) {
+      setRegState('Failed', 'fill extension, password, domain, and WSS server');
+      setStatus('Registration failed', 'err');
+      return;
+    }
+    user.mode = 'manual';
+    saveManual(cfg);
+    show($('authNotice'), false);
+    show($('manualForm'), false);
+    registerWith(cfg);
+  }
 
   // ------------------------------------------------------------------ //
   // call controls
@@ -153,7 +286,6 @@
     });
     session.on('progress', function () { setStatus('Ringing…', 'ring'); });
   }
-
 
   function onCallEnded(msg) {
     stopTicker();
@@ -196,7 +328,6 @@
     $('holdBtn').classList.toggle('active', onHold);
     log(onHold ? 'On hold' : 'Resumed');
   }
-
   // ------------------------------------------------------------------ //
   // ui wiring
   // ------------------------------------------------------------------ //
@@ -221,6 +352,45 @@
     $('hangupBtn').addEventListener('click', hangUp);
     $('muteBtn').addEventListener('click', toggleMute);
     $('holdBtn').addEventListener('click', toggleHold);
+
+    // registrar controls
+    $('retryBtn').addEventListener('click', function () {
+      if (user.mode === 'manual' && user.cfg) {
+        registerWith(user.cfg);
+      } else {
+        loadPortalConfig();
+      }
+    });
+
+    $('manualToggle').addEventListener('click', function () {
+      var f = $('manualForm');
+      var on = f.classList.contains('hidden');
+      show(f, on);
+      if (on && !user.cfg) {
+        var m = loadManual();
+        if (m) {
+          $('mExt').value = m.extension || m.username || '';
+          $('mPass').value = m.password || '';
+          $('mDomain').value = m.domain || '';
+          $('mWs').value = m.ws || '';
+        }
+      }
+    });
+
+    $('manualForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      registerManual(manualValues());
+    });
+
+    $('mUsePortal').addEventListener('click', function () {
+      show($('manualForm'), false);
+      try { localStorage.removeItem('xcall_manual'); } catch (e) { /* ignore */ }
+      loadPortalConfig();
+    });
+
+    $('authManual').addEventListener('click', function () {
+      $('manualToggle').click();
+    });
   }
 
   function sendDTMF(digit) {
@@ -232,24 +402,7 @@
   // ------------------------------------------------------------------ //
   function boot() {
     wire();
-    setStatus('Loading config…');
-    fetch('config.php')
-      .then(function (r) {
-        if (!r.ok) { throw new Error('auth required (' + r.status + ')'); }
-        return r.json();
-      })
-      .then(function (cfg) {
-        if (!cfg.username || !cfg.ws) {
-          throw new Error('no SIP credentials in portal session');
-        }
-        user.cfg = cfg;
-        log('Endpoint: ' + cfg.ws + '  Extension: ' + cfg.extension);
-        user.ua = makeUA(cfg);
-      })
-      .catch(function (err) {
-        setStatus('Not logged in', 'err');
-        log('Error: ' + err.message + ' — log into the XCall portal first.');
-      });
+    loadPortalConfig();
   }
 
   if (document.readyState === 'loading') {

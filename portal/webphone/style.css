@@ -147,3 +147,116 @@ html, body {
 }
 
 .hidden { display: none !important; }
+
+/* ---- registrar (ViciBox-style account + registration panel) ---- */
+.registrar {
+  background: var(--xcall-panel);
+  border-bottom: 1px solid #263449;
+  padding: 12px 18px;
+  font-size: 13px;
+}
+.reg-details {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.reg-detail { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.reg-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--xcall-muted);
+}
+.reg-value {
+  font-weight: 600;
+  color: var(--xcall-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reg-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.reg-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--xcall-muted);
+  flex-shrink: 0;
+}
+.reg-dot.dot-ok   { background: var(--xcall-ok);   box-shadow: 0 0 6px var(--xcall-ok); }
+.reg-dot.dot-busy { background: var(--xcall-warn); animation: pulse 1.1s infinite; }
+.reg-dot.dot-err  { background: var(--xcall-err);  box-shadow: 0 0 6px var(--xcall-err); }
+.reg-reason {
+  color: var(--xcall-err);
+  font-size: 12px;
+  margin-top: 4px;
+  word-break: break-word;
+  width: 100%;
+}
+.reg-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+/* small buttons inside the registrar */
+.btn-sm {
+  width: auto;
+  height: auto;
+  padding: 7px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.btn-ghost {
+  background: var(--xcall-bg-2);
+  color: var(--xcall-text);
+  border: 1px solid #263449;
+}
+.btn-ghost:hover { background: #2b3a57; }
+.btn-primary {
+  background: var(--xcall-accent);
+  color: #052e16;
+  font-weight: 700;
+}
+.btn-primary:hover { background: #67e8f9; }
+.btn-block { width: 100%; }
+
+/* manual setup form */
+.manual {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.manual input {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  border-radius: 9px;
+  border: 1px solid #263449;
+  background: var(--xcall-bg);
+  color: var(--xcall-text);
+  outline: none;
+}
+.manual input:focus { border-color: var(--xcall-accent); }
+
+/* not-logged-in notice */
+.auth-notice {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  color: #fde68a;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.auth-notice a { color: var(--xcall-accent); }
+.linklike {
+  background: none;
+  border: none;
+  color: var(--xcall-accent);
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}

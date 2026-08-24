@@ -44,6 +44,7 @@ try {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin Panel — XCall</title>
+<link rel="stylesheet" href="../ai-assistant/style.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="xcall-ai">
@@ -61,19 +62,43 @@ try {
       <a href="../webphone/index.html">Web Softphone</a>
       <a href="../../core/dashboard/">Back to Portal</a>
     </nav>
+    <div class="xcall-sidebar-footer">
+      <span>Signed in as <strong><?= htmlspecialchars($_SESSION["username"] ?? "guest") ?></strong></span>
+      <a href="<?= PROJECT_PATH ?>/logout.php">Log out</a>
+    </div>
   </aside>
 
   <main class="xcall-main">
     <div class="xcall-topbar">
-      <h1>Admin Panel</h1>
-      <span style="color:var(--x-c-muted);font-size:13px">
-        System: <strong><?= htmlspecialchars($company["system_name"] ?? "XCall") ?></strong>
-      </span>
+      <div>
+        <h1>Admin Panel</h1>
+        <p class="xcall-subtitle">Operate your system, clients, softphone, and AI assistant.</p>
+      </div>
+      <div class="topbar-actions">
+        <a class="xcall-btn xcall-btn-outline" href="../webphone/index.html">Open softphone</a>
+        <a class="xcall-btn xcall-btn-outline" href="../../core/dashboard/">Portal</a>
+      </div>
     </div>
-    <p style="color:var(--x-c-muted);margin:0 0 24px">
-      Name your system, enter your company details, maintain client data, and
-      customize the softphone — all in one place.
-    </p>
+    <div class="xcall-stats">
+      <div class="xcall-stat">
+        <div class="stat-num"><?= (int)$client_count ?></div>
+        <div class="stat-label">Clients on file</div>
+      </div>
+      <div class="xcall-stat">
+        <div class="stat-num"><?= (int)$assistant_count ?></div>
+        <div class="stat-label">AI assistants</div>
+      </div>
+      <div class="xcall-stat">
+        <div class="stat-num"><?= ($company["softphone_enabled"] ?? "true") === "false" ? "Off" : "On" ?></div>
+        <div class="stat-label">Web softphone</div>
+      </div>
+      <div class="xcall-stat">
+        <div class="stat-num stat-trunc"><?= htmlspecialchars((string)($company["company_name"] ?? ($company["system_name"] ?? "XCall"))) ?></div>
+        <div class="stat-label">Company</div>
+      </div>
+    </div>
+
+    <div class="xcall-section-title">Quick start</div>
     <?php if (!empty($setup_error)): ?>
       <div style="background:rgba(255,180,0,.12);border:1px solid rgba(255,180,0,.4);color:#ffd;
                   padding:10px 14px;border-radius:8px;margin:0 0 16px;font-size:13px">

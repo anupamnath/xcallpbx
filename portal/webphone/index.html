@@ -8,13 +8,54 @@
 </head>
 <body>
 <div id="app" class="phone">
+
   <header class="phone-header">
     <div class="brand">
       <span class="brand-mark">X</span>
       <span class="brand-name">XCall</span>
     </div>
-    <div class="status" id="status">Connecting…</div>
+    <div class="status" id="status">Loading…</div>
   </header>
+
+  <!-- Registrar (ViciBox-style): account + registration state + manual setup -->
+  <section class="registrar" id="registrarPanel">
+    <div class="reg-details">
+      <div class="reg-detail">
+        <span class="reg-label">Extension</span>
+        <span class="reg-value" id="regExtension">—</span>
+      </div>
+      <div class="reg-detail">
+        <span class="reg-label">Server</span>
+        <span class="reg-value" id="regServer">—</span>
+      </div>
+    </div>
+
+    <div class="reg-status">
+      <span class="reg-dot" id="regDot"></span>
+      <span id="regState">Offline</span>
+      <span class="reg-reason hidden" id="regReason"></span>
+    </div>
+
+    <div class="reg-actions">
+      <button id="retryBtn" class="btn btn-sm btn-ghost">&#8635; Retry</button>
+      <button id="manualToggle" class="btn btn-sm btn-ghost">Manual setup</button>
+    </div>
+
+    <form id="manualForm" class="manual hidden" autocomplete="off">
+      <input id="mExt" type="text" placeholder="Extension" autocomplete="off">
+      <input id="mPass" type="password" placeholder="SIP password" autocomplete="off">
+      <input id="mDomain" type="text" placeholder="Domain (e.g. pbx.example.com)" autocomplete="off">
+      <input id="mWs" type="text" placeholder="WSS server (e.g. wss://pbx.example.com/verto)" autocomplete="off">
+      <button type="submit" class="btn btn-sm btn-primary btn-block">Register</button>
+      <button type="button" id="mUsePortal" class="btn btn-sm btn-ghost btn-block">Use portal account</button>
+    </form>
+
+    <div class="auth-notice hidden" id="authNotice">
+      You are not logged in to the XCall portal.
+      <a href="login.php" target="_blank" rel="noopener">Log in</a> to register your portal
+      extension, or open <button type="button" id="authManual" class="linklike">manual setup</button>.
+    </div>
+  </section>
 
   <section class="caller" id="callerPanel">
     <div class="caller-name" id="callerName">—</div>
@@ -24,7 +65,7 @@
 
   <section class="dialpad" id="dialpad">
     <input id="numberInput" type="tel" autocomplete="off"
-           placeholder="Enter extension or number" enterkeyhint="call">
+           placeholder="Enter extension or number" enterkeyhint="call" disabled>
     <div class="keys">
       <button class="key" data-d="1">1</button>
       <button class="key" data-d="2">2</button>
