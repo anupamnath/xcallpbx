@@ -150,7 +150,7 @@ DB_PASS_ACTUAL="$DB_PASS"
 if [ "$SKIP_BASE" -eq 1 ]; then
     EXISTING_DB_PASS=""
     if [ -f /etc/fusionpbx/config.conf ]; then
-        EXISTING_DB_PASS=$(sed -n 's/^database_password=[[:space:]]*//p' /etc/fusionpbx/config.conf | head -n 1)
+        EXISTING_DB_PASS=$(sed -n 's/^database\.0\.password[[:space:]]*=[[:space:]]*//p' /etc/fusionpbx/config.conf | head -n 1)
     fi
     db_connect_ok() { PGPASSWORD="$1" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc "SELECT 1" >/dev/null 2>&1; }
     if [ -n "$EXISTING_DB_PASS" ] && db_connect_ok "$EXISTING_DB_PASS"; then
@@ -160,19 +160,25 @@ if [ "$SKIP_BASE" -eq 1 ]; then
         DB_PASS_ACTUAL="$DB_PASS"
     elif sudo -u postgres psql -c "ALTER ROLE fusionpbx WITH PASSWORD '$DB_PASS';" >/dev/null 2>&1; then
         DB_PASS_ACTUAL="$DB_PASS"
-        log "reset the fusionpbx database role password to match --db-pass"
+        # keep the portal's config.conf in sync with the new role password
+        if [ -f /etc/fusionpbx/config.conf ]; then
+            sed -i "s|^database\.0\.password[[:space:]]*=.*|database.0.password = $DB_PASS|" /etc/fusionpbx/config.conf
+        fi
+        log "reset the fusionpbx database role password to match --db-pass (config.conf synced)"
     else
         die "cannot authenticate to the fusionpbx database - re-run with --db-pass '<the actual FusionPBX database password>' (the portal's copy lives in /etc/fusionpbx/config.conf)"
     fi
 
-    # resume-safe domain: keep what the portal already runs unless the
+    # resume-safe domain: keep the domain the portal already runs unless the
     # operator explicitly passed --domain (avoids resetting nginx server_name
-    # to the bare hostname on re-runs)
-    if [ "$DOMAIN_ARG" -eq 0 ] && [ -f /etc/fusionpbx/config.conf ]; then
-        EXISTING_DOMAIN=$(sed -n 's/^domain_name=[[:space:]]*//p' /etc/fusionpbx/config.conf | head -n 1)
+    # to the bare hostname on re-runs). config.conf has no domain key - the
+    # authoritative value is the enabled domain row in the database.
+    if [ "$DOMAIN_ARG" -eq 0 ]; then
+        EXISTING_DOMAIN=$(PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
+            "select domain_name from v_domains where domain_enabled='true' order by domain_uuid limit 1;" 2>/dev/null | head -n 1)
         if [ -n "$EXISTING_DOMAIN" ]; then
             DOMAIN="$EXISTING_DOMAIN"
-            log "using the domain already configured in /etc/fusionpbx/config.conf: $DOMAIN"
+            log "using the domain already present in the database: $DOMAIN"
         fi
     fi
 
