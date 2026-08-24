@@ -143,7 +143,13 @@ install_freeswitch() {
 
 build_freeswitch_from_source() {
     local JOBS
-    JOBS=$(nproc)
+    # compiling FreeSWITCH is memory hungry; cap parallelism on small VPSes
+    if [ "$(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null)" -lt 4000000 ]; then
+        JOBS=1
+        warn "under 4 GB RAM detected - building FreeSWITCH single-threaded (slower but safer)"
+    else
+        JOBS=$(nproc)
+    fi
     log "FreeSWITCH source build ($JOBS parallel jobs)"
 
     # build dependencies (Debian 12 bookworm)
@@ -154,27 +160,25 @@ build_freeswitch_from_source() {
         libsqlite3-dev libspeexdsp-dev libspeex-dev libldns-dev libedit-dev libopus-dev \
         libmemcached-dev libshout3-dev libmpg123-dev libmp3lame-dev yasm nasm \
         libsndfile1-dev libuv1-dev libvpx-dev libavformat-dev libswscale-dev sox \
-        libsox-fmt-all cmake uuid-dev libssl-dev libsrtp2-dev libavcodec-dev \
+        libsox-fmt-all libssl-dev libsrtp2-dev libavcodec-dev \
         libavutil-dev 2>&1 | tail -n 1
 
-    # libks - needed by mod_verto (WebRTC websocket endpoint)
-    if [ ! -d /usr/src/libks/.git ]; then
-        log "building libks"
-        git clone -q https://github.com/signalwire/libks.git /usr/src/libks
-        cmake -S /usr/src/libks -B /usr/src/libks/build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local >/dev/null
-        cmake --build /usr/src/libks/build -j "$JOBS" >/dev/null
-        cmake --install /usr/src/libks/build >/dev/null
-        ldconfig
-    fi
-    export C_INCLUDE_PATH=/usr/include/libks
+    # mod_verto / mod_signalwire are NOT built from source (same as the FusionPBX
+    # source recipe): they need libks, whose libks2 CMake build requires a
+    # packaged release tarball and whose libks2.so / include/libks2 naming does
+    # not match FreeSWITCH 1.10.12. The XCall web softphone does not need them:
+    # it registers over SIP-over-WebSocket on the internal mod_sofia profile
+    # (freeswitch/conf). For mod_verto (verto.js clients / FusionPBX's
+    # communicator), install FreeSWITCH from the SignalWire apt repo with
+    # --signalwire-token instead.
 
-    # sofia-sip - SIP stack with WebSocket support (mod_sofia + mod_verto)
+    # sofia-sip - SIP stack with WebSocket support (needed by mod_sofia).
+    # FusionPBX's current default version - proven on Debian 12/gcc-12.
     if [ ! -d /usr/src/sofia-sip/.git ]; then
-        log "building sofia-sip v1.13.11"
+        log "building sofia-sip v1.13.18"
         git clone -q https://github.com/freeswitch/sofia-sip.git /usr/src/sofia-sip
         cd /usr/src/sofia-sip
-        git checkout -q v1.13.11
+        git checkout -q v1.13.18
         sh autogen.sh >/dev/null 2>&1
         ./configure --enable-debug >/dev/null 2>&1
         make -j "$JOBS" >/dev/null 2>&1
@@ -212,7 +216,7 @@ build_freeswitch_from_source() {
         die "FreeSWITCH bootstrap failed (log: /tmp/xcall-fs-bootstrap.log)"
     }
 
-    # enable the modules FusionPBX + XCall need (mod_verto stays on - libks is built)
+    # enable the modules FusionPBX + XCall need
     sed -i modules.conf \
         -e 's:#applications/mod_callcenter:applications/mod_callcenter:' \
         -e 's:#applications/mod_cidlookup:applications/mod_cidlookup:' \
@@ -220,14 +224,15 @@ build_freeswitch_from_source() {
         -e 's:#applications/mod_nibblebill:applications/mod_nibblebill:' \
         -e 's:#applications/mod_curl:applications/mod_curl:' \
         -e 's:#applications/mod_translate:applications/mod_translate:' \
-        -e 's:#applications/mod_avmd:applications/mod_avmd:' \
         -e 's:#formats/mod_shout:formats/mod_shout:' \
         -e 's:#say/mod_say_es:say/mod_say_es:' \
         -e 's:#say/mod_say_fr:say/mod_say_fr:'
-    # mod_signalwire needs libsignalwire-c (not installed) - disable like FusionPBX
+    # disable modules that need libks/libsignalwire-c, or that fail on modern
+    # gcc - same set FusionPBX's own source build disables.
     sed -i modules.conf \
         -e 's:^applications/mod_signalwire:#applications/mod_signalwire:' \
-        -e 's:^endpoints/mod_skinny:#endpoints/mod_skinny:'
+        -e 's:^endpoints/mod_skinny:#endpoints/mod_skinny:' \
+        -e 's:^endpoints/mod_verto:#endpoints/mod_verto:'
 
     log "configuring FreeSWITCH"
     ./configure -C --enable-portable-binary --disable-dependency-tracking --enable-debug \

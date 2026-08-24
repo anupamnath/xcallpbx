@@ -25,7 +25,10 @@ the softphone just needs the WebSocket endpoint.
   (`sip_profiles/internal.xml`) binds `ws` on 8081 and `wss` on 8082
   (`ws-binding` / `wss-binding`).
 - `mod_verto` (the verto.js JSON protocol, used by FusionPBX's communicator)
-  is optional and binds 8083/8084 (`autoload_configs/verto.conf.xml`).
+  is optional and binds 8083/8084 (`autoload_configs/verto.conf.xml`). It is
+  only available when FreeSWITCH is installed from the package repos
+  (`--signalwire-token`); the source-built FreeSWITCH omits it because it
+  requires the libks library (see `docs/VPS_DEPLOY.md`).
 - Certificates for the direct `wss://host:8082` endpoint: the container
   entrypoint / `deploy` scripts generate self-signed certs under
   `/etc/freeswitch/tls`. The browser path that matters goes through the portal

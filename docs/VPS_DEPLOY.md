@@ -42,6 +42,14 @@ curl -fsSL https://raw.githubusercontent.com/anupamnath/xcallpbx/main/deploy/boo
 > The provisioner therefore falls back to a deterministic source build
 > (the exact recipe FusionPBX's own installer uses), or uses the fast
 > official repo when you pass `--signalwire-token`.
+>
+> **`mod_verto` note:** the source build omits `mod_verto`/`mod_signalwire`
+> (they need the libks library, which does not build cleanly against
+> FreeSWITCH 1.10.12) — the same modules FusionPBX's own source install
+> disables. The XCall web softphone is unaffected: it registers over
+> SIP-over-WebSocket (`mod_sofia`, 8081/8082, proxied by nginx `/verto`).
+> If you need `mod_verto` for verto.js clients or FusionPBX's classic
+> communicator, use `--signalwire-token` (the apt packages include it).
 
 ## What you get
 
