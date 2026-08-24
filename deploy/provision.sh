@@ -110,9 +110,11 @@ cleanup_partial_xcall() {
     log "cleaning partial FusionPBX state from earlier attempts"
     # remove any old XCall nginx site (the official installer sets up nginx)
     rm -f /etc/nginx/sites-enabled/xcall /etc/nginx/sites-available/xcall 2>/dev/null || true
-    # let the official installer clone the correct FusionPBX branch
-    rm -rf /var/www/fusionpbx
-    rm -f /etc/fusionpbx/config.conf
+    # keep a healthy FusionPBX web root (fast resume); remove a broken/partial one
+    if [ ! -f /var/www/fusionpbx/index.php ]; then
+        rm -rf /var/www/fusionpbx
+        rm -f /etc/fusionpbx/config.conf
+    fi
     # drop a fusionpbx database that has no schema (empty/partial)
     if sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='fusionpbx'" 2>/dev/null | grep -q 1; then
         if ! sudo -u postgres psql -d fusionpbx -tAc "SELECT 1 FROM information_schema.tables WHERE table_name='v_domains'" 2>/dev/null | grep -q 1; then
@@ -272,6 +274,29 @@ UPDATE v_default_settings SET default_setting_value = 'Powered by XCall'
  WHERE default_setting_category = 'theme'
    AND default_setting_subcategory = 'footer';
 SQL
+
+# ---------------- verify the XCall add-ons ---------------------------------- #
+log "verifying XCall add-ons (admin panel, AI assistant, webphone)"
+for p in admin/index.php ai-assistant/assistants.php ai-assistant/api_helpers.php \
+         webphone/index.html webphone/config.php webphone/vendor/sip.min.js; do
+    if [ ! -f "$PBX_ROOT/$p" ]; then
+        warn "missing portal add-on file: $p - re-running the rebrand"
+        PGPASSWORD="$DB_PASS" PGHOST=127.0.0.1 \
+            bash "$INSTALL_DIR/portal/rebrand/install-rebrand.sh" "$PBX_ROOT" fusionpbx \
+            >/tmp/xcall-rebrand.log 2>&1 || warn "rebrand re-run reported a warning"
+        break
+    fi
+done
+
+# the v_xcall_* tables must exist for the admin panel + AI assistant
+if ! PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
+       "SELECT 1 FROM information_schema.tables WHERE table_name='v_xcall_assistants'" 2>/dev/null | grep -q 1; then
+    log "v_xcall schema missing - applying portal/ai-assistant/schema.sql"
+    PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx \
+        -f "$INSTALL_DIR/portal/ai-assistant/schema.sql" 2>&1 | tail -n 3 \
+        || warn "could not apply the v_xcall schema (check the DB user/password)"
+fi
+chown -R www-data:www-data "$PBX_ROOT/webphone" "$PBX_ROOT/ai-assistant" "$PBX_ROOT/admin" 2>/dev/null || true
 
 # ---------------- FreeSWITCH XCall overlay ---------------------------------- #
 log "configuring FreeSWITCH (SIP-over-WebSocket / ESL / dialplan)"
@@ -488,7 +513,7 @@ server {
     server_name $DOMAIN;
     client_max_body_size 80M;
     root $PBX_ROOT;
-    index index.php;
+    index index.php index.html;
 
     ssl_certificate     /etc/ssl/certs/ssl-cert-snakeoil.pem;
     ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
