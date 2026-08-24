@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
-# XCall — one-shot installer for a bare Ubuntu 22.04 / Debian 12 server.
+# XCall — one-shot installer for a bare Ubuntu 22.04 server (LEGACY).
+#
+# DEPRECATED: on Debian 12 use the self-contained installer instead —
+#   curl -fsSL https://raw.githubusercontent.com/anupamnath/xcallpbx/main/deploy/bootstrap.sh | sudo bash
+# (see docs/VPS_DEPLOY.md). This script depends on FusionPBX's official
+# Ubuntu installer, whose FreeSWITCH package repo now requires a SignalWire
+# login; if you still want it, configure the signalwire token in that
+# installer (switch_token) before running.
 #
 # Installs FreeSWITCH + FusionPBX, applies the XCall rebrand, configures the
 # AI agent as a systemd service, and prints the finishing steps.
