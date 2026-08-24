@@ -36,6 +36,7 @@ die()  { echo -e "\e[1;31m[xcall!!]\e[0m $*" >&2; exit 1; }
 
 # ---------------- args ----------------------------------------------------- #
 DOMAIN=""
+DOMAIN_ARG=0
 ADMIN_PASS=""
 DB_PASS=""
 ESL_PASS="ClueCon"
@@ -46,7 +47,7 @@ SW_TOKEN=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --domain)      DOMAIN="${2:-}"; shift 2 ;;
+        --domain)      DOMAIN="${2:-}"; DOMAIN_ARG=1; shift 2 ;;
         --admin-pass)  ADMIN_PASS="${2:-}"; shift 2 ;;
         --db-pass)     DB_PASS="${2:-}"; shift 2 ;;
         --esl-pass)    ESL_PASS="${2:-}"; shift 2 ;;
@@ -138,6 +139,55 @@ if [ -f /var/www/fusionpbx/index.php ] && \
     log "FusionPBX base already present - resuming (skipping the official installer)"
 fi
 
+# ---------------- database credentials (resume-safe) ------------------------ #
+# The FusionPBX base may have been installed earlier by the official installer,
+# which generated its OWN database password and stored it in
+# /etc/fusionpbx/config.conf. Never assume --db-pass matches it: prefer the
+# password the running portal already uses, then --db-pass, and only as a last
+# resort reset the role to --db-pass. (In a fresh install the installer just
+# created the role with $DB_PASS, so this block is skipped.)
+DB_PASS_ACTUAL="$DB_PASS"
+if [ "$SKIP_BASE" -eq 1 ]; then
+    EXISTING_DB_PASS=""
+    if [ -f /etc/fusionpbx/config.conf ]; then
+        EXISTING_DB_PASS=$(sed -n 's/^database_password=[[:space:]]*//p' /etc/fusionpbx/config.conf | head -n 1)
+    fi
+    db_connect_ok() { PGPASSWORD="$1" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc "SELECT 1" >/dev/null 2>&1; }
+    if [ -n "$EXISTING_DB_PASS" ] && db_connect_ok "$EXISTING_DB_PASS"; then
+        DB_PASS_ACTUAL="$EXISTING_DB_PASS"
+        log "using the database password already configured in /etc/fusionpbx/config.conf"
+    elif db_connect_ok "$DB_PASS"; then
+        DB_PASS_ACTUAL="$DB_PASS"
+    elif sudo -u postgres psql -c "ALTER ROLE fusionpbx WITH PASSWORD '$DB_PASS';" >/dev/null 2>&1; then
+        DB_PASS_ACTUAL="$DB_PASS"
+        log "reset the fusionpbx database role password to match --db-pass"
+    else
+        die "cannot authenticate to the fusionpbx database - re-run with --db-pass '<the actual FusionPBX database password>' (the portal's copy lives in /etc/fusionpbx/config.conf)"
+    fi
+
+    # resume-safe domain: keep what the portal already runs unless the
+    # operator explicitly passed --domain (avoids resetting nginx server_name
+    # to the bare hostname on re-runs)
+    if [ "$DOMAIN_ARG" -eq 0 ] && [ -f /etc/fusionpbx/config.conf ]; then
+        EXISTING_DOMAIN=$(sed -n 's/^domain_name=[[:space:]]*//p' /etc/fusionpbx/config.conf | head -n 1)
+        if [ -n "$EXISTING_DOMAIN" ]; then
+            DOMAIN="$EXISTING_DOMAIN"
+            log "using the domain already configured in /etc/fusionpbx/config.conf: $DOMAIN"
+        fi
+    fi
+
+    # resume-safe event-socket password: reuse the one FreeSWITCH already runs
+    # (re-running must not silently rotate the AI agent's ESL credentials)
+    if [ -f /etc/freeswitch/autoload_configs/event_socket.conf.xml ]; then
+        EXISTING_ESL=$(sed -n 's/.*<param name="password" value="\([^"]*\)".*/\1/p' \
+            /etc/freeswitch/autoload_configs/event_socket.conf.xml | head -n 1)
+        if [ -n "$EXISTING_ESL" ]; then
+            ESL_PASS="$EXISTING_ESL"
+            log "reusing the existing FreeSWITCH event-socket password"
+        fi
+    fi
+fi
+
 # ---------------- official FusionPBX installer (base system) --------------- #
 PBX_ROOT=/var/www/fusionpbx
 if [ "$SKIP_BASE" -eq 0 ]; then
@@ -202,12 +252,12 @@ log "official FusionPBX installer finished."
 
 # ---------------- verify the FusionPBX schema ------------------------------ #
 log "verifying the FusionPBX database schema"
-if ! PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
+if ! PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
        "SELECT 1 FROM v_domains" 2>/dev/null | grep -q 1; then
     warn "v_domains is missing - re-running the schema upgrade with full output:"
     cd "$PBX_ROOT"
     /usr/bin/php core/upgrade/upgrade.php --schema 2>&1 | tail -n 50
-    if ! PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
+    if ! PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
            "SELECT 1 FROM v_domains" 2>/dev/null | grep -q 1; then
         echo "--- /etc/fusionpbx/config.conf (password hidden) ---"
         sed -E 's/^(database\.0\.password = ).*/\1***/' /etc/fusionpbx/config.conf 2>/dev/null | tail -n 25
@@ -217,29 +267,29 @@ fi
 fi   # end of resume-mode skip
 
 # ensure the domain row exists (the installer inserts it; be idempotent)
-if ! PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
+if ! PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
        "SELECT 1 FROM v_domains WHERE domain_name='$DOMAIN'" | grep -q 1; then
     log "adding domain: $DOMAIN"
     DOMAIN_UUID=$(/usr/bin/php "$PBX_ROOT/resources/uuid.php")
-    PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -c \
+    PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -c \
         "insert into v_domains (domain_uuid, domain_name, domain_enabled) values('$DOMAIN_UUID', '$DOMAIN', 'true');" >/dev/null
 fi
-DOMAIN_UUID=$(PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
+DOMAIN_UUID=$(PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
     "select domain_uuid from v_domains where domain_name='$DOMAIN';")
 
 # make sure the admin user exists
-if ! PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
+if ! PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
        "SELECT 1 FROM v_users WHERE username='admin'" | grep -q 1; then
     log "adding admin user"
     USER_UUID=$(/usr/bin/php "$PBX_ROOT/resources/uuid.php")
     USER_SALT=$(/usr/bin/php "$PBX_ROOT/resources/uuid.php")
     PASSWORD_HASH=$(/usr/bin/php -r "echo md5('$USER_SALT$ADMIN_PASS');")
-    PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -c \
+    PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -c \
         "insert into v_users (user_uuid, domain_uuid, username, password, salt, user_enabled) values('$USER_UUID', '$DOMAIN_UUID', 'admin', '$PASSWORD_HASH', '$USER_SALT', 'true');" >/dev/null
-    GROUP_UUID=$(PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -qtAX -c \
+    GROUP_UUID=$(PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -qtAX -c \
         "select group_uuid from v_groups where group_name = 'superadmin';")
     USER_GROUP_UUID=$(/usr/bin/php "$PBX_ROOT/resources/uuid.php")
-    PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -c \
+    PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -c \
         "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$USER_GROUP_UUID', '$DOMAIN_UUID', 'superadmin', '$GROUP_UUID', '$USER_UUID');" >/dev/null
 fi
 
@@ -248,7 +298,7 @@ mkdir -p "$INSTALL_DIR"
 cat > "$INSTALL_DIR/.deploy-state" <<EOF
 DOMAIN_UUID=$DOMAIN_UUID
 DOMAIN=$DOMAIN
-DB_PASS=$DB_PASS
+DB_PASS=$DB_PASS_ACTUAL
 ADMIN_PASS=$ADMIN_PASS
 ESL_PASS=$ESL_PASS
 EOF
@@ -261,12 +311,12 @@ log "applying XCall branding + admin panel + webphone + AI assistant"
 if [ -f "$INSTALL_DIR/portal/rebrand/install-rebrand.sh" ]; then
     # PGPASSWORD + PGHOST are required: the rebrand runs psql as the fusionpbx
     # user over TCP (peer auth on the local socket would reject it)
-    PGPASSWORD="$DB_PASS" PGHOST=127.0.0.1 bash "$INSTALL_DIR/portal/rebrand/install-rebrand.sh" "$PBX_ROOT" fusionpbx \
+    PGPASSWORD="$DB_PASS_ACTUAL" PGHOST=127.0.0.1 bash "$INSTALL_DIR/portal/rebrand/install-rebrand.sh" "$PBX_ROOT" fusionpbx \
         || warn "rebrand script reported a warning"
 fi
 
 # brand values into v_default_settings for the current domain
-PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -q <<'SQL' 2>/dev/null || true
+PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -q <<'SQL' 2>/dev/null || true
 UPDATE v_default_settings SET default_setting_value = 'XCall'
  WHERE default_setting_category = 'theme'
    AND default_setting_subcategory = 'menu_brand_text';
@@ -281,7 +331,7 @@ for p in admin/index.php ai-assistant/assistants.php ai-assistant/api_helpers.ph
          webphone/index.html webphone/config.php webphone/vendor/sip.min.js; do
     if [ ! -f "$PBX_ROOT/$p" ]; then
         warn "missing portal add-on file: $p - re-running the rebrand"
-        PGPASSWORD="$DB_PASS" PGHOST=127.0.0.1 \
+        PGPASSWORD="$DB_PASS_ACTUAL" PGHOST=127.0.0.1 \
             bash "$INSTALL_DIR/portal/rebrand/install-rebrand.sh" "$PBX_ROOT" fusionpbx \
             >/tmp/xcall-rebrand.log 2>&1 || warn "rebrand re-run reported a warning"
         break
@@ -289,10 +339,10 @@ for p in admin/index.php ai-assistant/assistants.php ai-assistant/api_helpers.ph
 done
 
 # the v_xcall_* tables must exist for the admin panel + AI assistant
-if ! PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
+if ! PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
        "SELECT 1 FROM information_schema.tables WHERE table_name='v_xcall_assistants'" 2>/dev/null | grep -q 1; then
     log "v_xcall schema missing - applying portal/ai-assistant/schema.sql"
-    PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx \
+    PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx \
         -f "$INSTALL_DIR/portal/ai-assistant/schema.sql" 2>&1 | tail -n 3 \
         || warn "could not apply the v_xcall schema (check the DB user/password)"
 fi
@@ -472,12 +522,12 @@ if [ "$SKIP_AI" -eq 0 ]; then
     .venv/bin/pip install -r requirements.txt -q
 
     # shared secret from the DB so the agent can fetch assistant configs
-    AGENT_SECRET=$(PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
+    AGENT_SECRET=$(PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
         "select setting_value from v_xcall_settings where setting_name='agent_shared_secret';" 2>/dev/null)
     if [ -z "$AGENT_SECRET" ]; then
         warn "agent_shared_secret not found - generating a fresh one"
         AGENT_SECRET=$(tr -dc 'a-f0-9' < /dev/urandom | head -c 32)
-        PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -c \
+        PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -c \
             "insert into v_xcall_settings (setting_name, setting_value) values('agent_shared_secret','$AGENT_SECRET') on conflict (setting_name) do nothing;" >/dev/null 2>&1 || true
     fi
 

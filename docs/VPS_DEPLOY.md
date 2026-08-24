@@ -127,6 +127,8 @@ sudo bash deploy/bootstrap.sh   # idempotent — re-applies config
 
 | Symptom | Fix |
 |---|---|
+| `psql ... password authentication failed for user "fusionpbx"` on re-run | The official FusionPBX installer generated its own database password, which is **not** the `--db-pass` you pass. Resume mode now reuses the password already in `/etc/fusionpbx/config.conf` automatically. If it still fails, run `sudo -u postgres psql -c "ALTER ROLE fusionpbx WITH PASSWORD '<alphanumeric>'"` and re-run with `--db-pass '<alphanumeric>'`. |
+| Re-run switches the portal domain to the bare hostname | Resume mode now keeps the `domain_name` already in `/etc/fusionpbx/config.conf` unless you pass `--domain` explicitly. |
 | `certbot failed` | DNS A record must point at the server **before** running with `--email`. Re-run with the correct DNS or use `certbot --nginx -d <domain>` manually. |
 | Portal shows "Unable to connect to database" | Check `/etc/fusionpbx/config.conf` password matches the DB: `sudo -u postgres psql -c "ALTER USER fusionpbx WITH PASSWORD '...'"`. |
 | `configure: error: Library requirements ... not met` | A dev package is missing. On re-runs the installer installs everything, but if you build manually run: `apt-get install -y libpcre3-dev zlib1g-dev libjpeg-dev libldns-dev libssl-dev libsqlite3-dev libcurl4-openssl-dev libspeex-dev libspeexdsp-dev libpq-dev` then `rm -f /usr/src/freeswitch-1.10.12/config.cache`. |
