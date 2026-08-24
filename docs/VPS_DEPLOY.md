@@ -36,11 +36,24 @@ curl -fsSL https://raw.githubusercontent.com/anupamnath/xcallpbx/main/deploy/boo
 | `--skip-ai` | Skip the AI agent service (the AI assistant page still installs). |
 | `--signalwire-token` | Free token from https://signalwire.com → installs FreeSWITCH from the official SignalWire apt repo (fast). Without it, the installer **builds FreeSWITCH 1.10.12 from source** (fully self-contained, no account, ~30–60 min on a 2 vCPU VPS). |
 
+> **Passwords:** `--admin-pass`, `--db-pass` and `--esl-pass` are restricted
+> to **alphanumerics (A-Z a-z 0-9)**. Passwords containing special characters
+> would break the config files / SQL, so they are silently stripped to
+> alphanumerics (and the final values are printed in the summary).
+
+> **How it works.** The provisioner delegates the base system to **FusionPBX's
+> official Debian installer** (`fusionpbx-install.sh`) — so the FreeSWITCH
+> source build, PostgreSQL, FusionPBX app, schema, domain and admin user are
+> exactly what the FusionPBX project tests — then applies the XCall layer
+> (rebrand, admin panel, AI assistant, WebRTC softphone, AI agent) on top.
+> It is designed to run on a **fresh Debian 12 VPS**; re-runs clean up
+> partial state first.
+>
 > **Why is FreeSWITCH built from source?** The old public package repo
 > (`files.freeswitch.org`) now requires a SignalWire login, and the public
 > `pkg.signalwire.com` repo was retired — both return 401/404 anonymously.
-> The provisioner therefore falls back to a deterministic source build
-> (the exact recipe FusionPBX's own installer uses), or uses the fast
+> The installer's default is therefore a deterministic source build of
+> **FreeSWITCH 1.10.12** (the `fusionpbx/freeswitch` fork), or the fast
 > official repo when you pass `--signalwire-token`.
 >
 > **`mod_verto` note:** the source build omits `mod_verto`/`mod_signalwire`

@@ -87,8 +87,9 @@ then configures nginx (TLS), the firewall, and the systemd services.
 
 > **FreeSWITCH packaging note.** The legacy public apt repo
 > (`files.freeswitch.org`) now requires a SignalWire login, so the installer
-> **builds FreeSWITCH 1.10.12 from source** by default (self-contained,
-> ~30–60 min). To use the fast official package repo instead, grab a free
+> uses FusionPBX's official Debian installer and **builds FreeSWITCH 1.10.12
+> from source** by default (self-contained, ~30–60 min). To use the fast
+> official package repo instead, grab a free
 > token from https://signalwire.com and add
 > `--signalwire-token '<token>'` to the command above.
 

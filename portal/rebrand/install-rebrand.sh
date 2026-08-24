@@ -43,7 +43,7 @@ echo "   copied brand assets + xcall.css"
 
 # 3. branding SQL ------------------------------------------------------ #
 echo "   applying branding SQL (postgres user: $DB_USER) ..."
-psql -U "$DB_USER" -f "$SCRIPT_DIR/xcall_rebrand.sql" fusionpbx \
+psql -h 127.0.0.1 -U "$DB_USER" -f "$SCRIPT_DIR/xcall_rebrand.sql" fusionpbx \
   || echo "   WARNING: SQL apply failed — set brand values in the portal UI (Settings > Theme)."
 
 # 4. web softphone ----------------------------------------------------- #
@@ -64,7 +64,7 @@ if [ -d "$AIASSISTANT" ]; then
     install -m 644 "$AIASSISTANT"/*.js     "$FUSIONPBX_DIR/ai-assistant/"
     echo "   installed AI assistant manager at /ai-assistant"
     if command -v psql >/dev/null 2>&1; then
-        psql -U "$DB_USER" -f "$AIASSISTANT/schema.sql" fusionpbx \
+        psql -h 127.0.0.1 -U "$DB_USER" -f "$AIASSISTANT/schema.sql" fusionpbx \
           && echo "   applied AI assistant schema" \
           || echo "   WARNING: AI assistant schema not applied (run schema.sql manually)"
     fi
