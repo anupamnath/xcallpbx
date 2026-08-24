@@ -57,14 +57,35 @@ def setup_logging(cfg: dict) -> None:
         except OSError:
             logging.getLogger("xcall").warning("could not open log file %s", log_file)
 
+def _make_stt_safe(cfg: dict, log):
+    """Build an STT engine; fall back to the stub engine if unavailable."""
+    try:
+        return make_stt(cfg)
+    except Exception as exc:
+        log.warning("STT engine %r unavailable (%s) - using stub", cfg.get("engine"), exc)
+        return make_stt({"engine": "stub"})
+
+
+def _make_tts_safe(cfg: dict, log):
+    """Build a TTS engine; fall back to espeak (then stub) if unavailable."""
+    try:
+        return make_tts(cfg)
+    except Exception as exc:
+        log.warning("TTS engine %r unavailable (%s) - using espeak", cfg.get("engine"), exc)
+        try:
+            return make_tts({"engine": "espeak"})
+        except Exception:  # pragma: no cover - espeak is always constructable
+            return make_tts({"engine": "stub"})
+
+
 def build_script_agent(config: Config, log):
     script_path = config.script.get("file", "scripts/helpdesk_triage.yaml")
     if not os.path.isabs(script_path):
         script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", script_path)
     script = Script.load(script_path)
 
-    stt = make_stt(config.stt)
-    tts = make_tts(config.tts)
+    stt = _make_stt_safe(config.stt, log)
+    tts = _make_tts_safe(config.tts, log)
     llm = make_llm(config.llm)
 
     log.info(
@@ -95,8 +116,8 @@ def build_assistant_agent(config: Config, log):
         if assistant.get("assistant_voice"):
             tts_cfg["voice"] = assistant.get("assistant_voice")
 
-    stt = make_stt(stt_cfg)
-    tts = make_tts(tts_cfg)
+    stt = _make_stt_safe(stt_cfg, log)
+    tts = _make_tts_safe(tts_cfg, log)
 
     log.info(
         "assistant mode ready: %s (%s/%s) STT=%s TTS=%s",

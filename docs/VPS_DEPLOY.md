@@ -36,6 +36,13 @@ curl -fsSL https://raw.githubusercontent.com/anupamnath/xcallpbx/main/deploy/boo
 | `--skip-ai` | Skip the AI agent service (the AI assistant page still installs). |
 | `--signalwire-token` | Free token from https://signalwire.com → installs FreeSWITCH from the official SignalWire apt repo (fast). Without it, the installer **builds FreeSWITCH 1.10.12 from source** (fully self-contained, no account, ~30–60 min on a 2 vCPU VPS). |
 
+**AI agent default engines:** the agent starts with `STT=stub`, `TTS=espeak`,
+`LLM=ollama` (falls back to keyword matching until Ollama is installed) — so
+it always runs. To get real speech recognition, install a model and switch
+the engine (see `docs/AI_AGENT.md`): `pip install vosk` + a vosk model, or
+`pip install faster-whisper`; the portal's **AI Assistants → Voice & Speech**
+tab then selects the engine per assistant. For natural TTS, install `piper`.
+
 > **Passwords:** `--admin-pass`, `--db-pass` and `--esl-pass` are restricted
 > to **alphanumerics (A-Z a-z 0-9)**. Passwords containing special characters
 > would break the config files / SQL, so they are silently stripped to

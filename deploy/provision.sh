@@ -435,8 +435,13 @@ systemctl restart freeswitch 2>/dev/null || warn "freeswitch not running yet (ch
 # ---------------- AI agent -------------------------------------------------- #
 if [ "$SKIP_AI" -eq 0 ]; then
     log "installing AI agent (systemd)"
+    # Debian keeps ensurepip/pip in a separate package; install it first
+    # (espeak-ng gives the agent a working TTS voice out of the box)
+    apt-get install -y -qq python3-venv python3-pip espeak-ng 2>&1 | tail -n 1
     AI_DIR="$INSTALL_DIR/ai-agent"
     cd "$AI_DIR"
+    # remove any broken partial venv from an earlier failed run
+    rm -rf .venv
     python3 -m venv .venv
     .venv/bin/pip install --upgrade pip -q
     .venv/bin/pip install -r requirements.txt -q
@@ -456,6 +461,8 @@ if [ "$SKIP_AI" -eq 0 ]; then
         -e "s/mode: .*/mode: \"assistant\"/" \
         -e "s#portal_url: .*#portal_url: \"https://$DOMAIN/ai-assistant/assistant_api.php\"#" \
         -e "s#portal_secret: .*#portal_secret: \"$AGENT_SECRET\"#" \
+        -e 's#engine: "whisper"#engine: "stub"#' \
+        -e 's#engine: "piper"#engine: "espeak"#' \
         config.example.yaml > config.yaml
 
     install -m 644 "$INSTALL_DIR/deploy/xcall-agent.service" /etc/systemd/system/xcall-agent.service
