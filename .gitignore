@@ -36,3 +36,10 @@ fusionpbx-src/
 dist/
 build/
 *.wav
+
+# Local Windows demo harness (PHP runtime + dev shims + demo DB)
+tools/
+resources/
+portal/resources/
+local/xcall_demo.sqlite
+local/server.log

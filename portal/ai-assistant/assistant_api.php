@@ -13,11 +13,13 @@
  *   POST assistant_api.php?action=delete&assistant_uuid=<uuid>
  *   GET  assistant_api.php?action=agent_config&key=<secret>   (agent only)
  *   GET  assistant_api.php?action=default_config              (agent fallback)
+ *
+ * Note: the xcall_* helpers are loaded by api_helpers.php into the global
+ * namespace, so no `use function` import is needed (and it would emit a
+ * PHP 8.4 warning that pollutes the JSON response).
  */
 
 require_once __DIR__ . "/api_helpers.php";
-
-use function xcall_fail, xcall_ok, xcall_input_json, xcall_encrypt_secret, xcall_decrypt_secret;
 
 $action = $_GET["action"] ?? "";
 $domain_uuid = $_SESSION["domain_uuid"] ?? "00000000-0000-0000-0000-000000000000";

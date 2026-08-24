@@ -131,7 +131,7 @@ $is_new = empty($assistant_uuid) || $duplicate || !$assistant;
           <div class="xcall-field" id="apiKeyField">
             <label>API key</label>
             <input type="password" name="assistant_api_key" autocomplete="new-password"
-                   placeholder="<?= $assistant["assistant_api_key_enc"] ? "•••••••• (leave blank to keep current)" : "sk-…" ?>">
+                   placeholder="<?= !empty($assistant["assistant_api_key_enc"]) ? "•••••••• (leave blank to keep current)" : "sk-…" ?>">
           </div>
           <div class="xcall-field" id="baseUrlField">
             <label>API base URL <span class="hint">— for custom / local endpoints</span></label>
