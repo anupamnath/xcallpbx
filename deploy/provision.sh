@@ -128,7 +128,17 @@ cleanup_partial_xcall() {
 }
 cleanup_partial_xcall
 
+# resume mode: if the FusionPBX base is already installed, skip the installer
+SKIP_BASE=0
+if [ -f /var/www/fusionpbx/index.php ] && \
+   sudo -u postgres psql -d fusionpbx -tAc "SELECT 1 FROM v_domains" 2>/dev/null | grep -q 1; then
+    SKIP_BASE=1
+    log "FusionPBX base already present - resuming (skipping the official installer)"
+fi
+
 # ---------------- official FusionPBX installer (base system) --------------- #
+PBX_ROOT=/var/www/fusionpbx
+if [ "$SKIP_BASE" -eq 0 ]; then
 log "cloning the official FusionPBX installer"
 if [ ! -d /usr/src/fusionpbx-install.sh/.git ]; then
     git clone -q https://github.com/fusionpbx/fusionpbx-install.sh.git /usr/src/fusionpbx-install.sh
@@ -189,7 +199,6 @@ tail -n 50 /tmp/xcall-fusionpbx-install.log
 log "official FusionPBX installer finished."
 
 # ---------------- verify the FusionPBX schema ------------------------------ #
-PBX_ROOT=/var/www/fusionpbx
 log "verifying the FusionPBX database schema"
 if ! PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
        "SELECT 1 FROM v_domains" 2>/dev/null | grep -q 1; then
@@ -203,6 +212,7 @@ if ! PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
         die "FusionPBX schema was not created. Full log: /tmp/xcall-fusionpbx-install.log"
     fi
 fi
+fi   # end of resume-mode skip
 
 # ensure the domain row exists (the installer inserts it; be idempotent)
 if ! PGPASSWORD="$DB_PASS" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
@@ -278,40 +288,104 @@ if [ -f "$INSTALL_DIR/freeswitch/conf/dialplan/xcall_ai.xml" ]; then
     install -m 644 "$INSTALL_DIR/freeswitch/conf/dialplan/xcall_ai.xml" "$FS_CONF/dialplan/xcall_ai.xml"
 fi
 
-# merge XCall vars + SIP-over-WebSocket bindings into the FusionPBX-managed
-# vars.xml / internal profile (never replace their DB-managed files wholesale)
+# XCall FreeSWITCH additions, applied to the FusionPBX-managed tree WITHOUT
+# replacing their DB-managed files (all best-effort - never abort the install)
 python3 - <<'PY'
-import io
+import io, os
 
+# 1. merge XCall vars into vars.xml (FusionPBX manages this file from the DB)
 v = "/etc/freeswitch/vars.xml"
-s = io.open(v, encoding="utf-8").read()
-if "internal_ws_port" not in s:
-    extra = ('\n    <!-- XCall: web softphone (SIP over WebSocket) + AI agent -->\n'
-             '    <X-PRE-PROCESS cmd="set" data="internal_ws_port=8081"/>\n'
-             '    <X-PRE-PROCESS cmd="set" data="internal_wss_port=8082"/>\n'
-             '    <X-PRE-PROCESS cmd="set" data="verto_port=8083"/>\n'
-             '    <X-PRE-PROCESS cmd="set" data="verto_port_secure=8084"/>\n'
-             '    <X-PRE-PROCESS cmd="set" data="xcall_recordings_dir=/var/spool/xcall/recordings"/>\n'
-             '    <X-PRE-PROCESS cmd="set" data="xcall_ai_extension=5000"/>\n'
-             '    <X-PRE-PROCESS cmd="set" data="xcall_ai_context=xcall_ai"/>\n'
-             '    <X-PRE-PROCESS cmd="set" data="xcall_specialist_extension=7000"/>\n'
-             '    <X-PRE-PROCESS cmd="set" data="xcall_tts_dir=/var/spool/xcall/tts"/>\n')
-    s = s.replace("</include>", extra + "</include>")
-    io.open(v, "w", encoding="utf-8").write(s)
-    print("merged XCall vars into vars.xml")
+try:
+    s = io.open(v, encoding="utf-8").read()
+except OSError:
+    print("WARNING: vars.xml not found - skipping XCall var merge")
+else:
+    if "internal_ws_port" not in s:
+        extra = ('\n    <!-- XCall: web softphone (SIP over WebSocket) + AI agent -->\n'
+                 '    <X-PRE-PROCESS cmd="set" data="internal_ws_port=8081"/>\n'
+                 '    <X-PRE-PROCESS cmd="set" data="internal_wss_port=8082"/>\n'
+                 '    <X-PRE-PROCESS cmd="set" data="verto_port=8083"/>\n'
+                 '    <X-PRE-PROCESS cmd="set" data="verto_port_secure=8084"/>\n'
+                 '    <X-PRE-PROCESS cmd="set" data="xcall_recordings_dir=/var/spool/xcall/recordings"/>\n'
+                 '    <X-PRE-PROCESS cmd="set" data="xcall_ai_extension=5000"/>\n'
+                 '    <X-PRE-PROCESS cmd="set" data="xcall_ai_context=xcall_ai"/>\n'
+                 '    <X-PRE-PROCESS cmd="set" data="xcall_specialist_extension=7000"/>\n'
+                 '    <X-PRE-PROCESS cmd="set" data="xcall_tts_dir=/var/spool/xcall/tts"/>\n')
+        s = s.replace("</include>", extra + "</include>")
+        io.open(v, "w", encoding="utf-8").write(s)
+        print("merged XCall vars into vars.xml")
+    else:
+        print("vars.xml already has the XCall vars")
 
+# 2. if the internal profile is a static file, add ws-binding to it as well
 i = "/etc/freeswitch/sip_profiles/internal.xml"
-s = io.open(i, encoding="utf-8").read()
-if "ws-binding" not in s and "<settings>" in s:
-    s = s.replace(
-        "<settings>",
-        '<settings>\n        <param name="ws-binding" value=":$${internal_ws_port}"/>\n'
-        '        <param name="wss-binding" value=":$${internal_wss_port}"/>',
-        1,
-    )
-    io.open(i, "w", encoding="utf-8").write(s)
-    print("added ws-binding/wss-binding to the internal SIP profile")
+if os.path.exists(i):
+    s = io.open(i, encoding="utf-8").read()
+    if "ws-binding" not in s and "<settings>" in s:
+        s = s.replace(
+            "<settings>",
+            '<settings>\n        <param name="ws-binding" value=":$${internal_ws_port}"/>\n'
+            '        <param name="wss-binding" value=":$${internal_wss_port}"/>',
+            1,
+        )
+        io.open(i, "w", encoding="utf-8").write(s)
+        print("added ws-binding/wss-binding to the internal SIP profile")
+    else:
+        print("internal SIP profile already has ws-binding")
+else:
+    print("note: internal SIP profile is DB-managed (no static file) - the xcall_ws profile covers the softphone")
+
+# 3. FusionPBX's verto.conf hardcodes 8081/8082 - move verto to 8083/8084 so
+#    the SIP-over-WebSocket endpoint owns 8081/8082 without port conflicts
+vc = "/etc/freeswitch/autoload_configs/verto.conf.xml"
+if os.path.exists(vc):
+    s = io.open(vc, encoding="utf-8").read()
+    if "0.0.0.0:8081" in s or "0.0.0.0:8082" in s:
+        s = s.replace("0.0.0.0:8081", "0.0.0.0:8083").replace("0.0.0.0:8082", "0.0.0.0:8084")
+        io.open(vc, "w", encoding="utf-8").write(s)
+        print("moved FusionPBX verto profile to 8083/8084")
 PY
+
+# 4. a dedicated SIP-over-WebSocket profile for the SIP.js softphone
+cat > "$FS_CONF/sip_profiles/xcall_ws.xml" <<'XML'
+<profile name="xcall_ws">
+    <domains>
+        <domain name="all" alias="true" parse="false"/>
+    </domains>
+    <gateways></gateways>
+    <settings>
+        <param name="debug" value="0"/>
+        <param name="sip-trace" value="no"/>
+        <param name="log-auth-failures" value="true"/>
+        <param name="context" value="default"/>
+        <param name="dialplan" value="XML"/>
+        <param name="sip-port" value="5062"/>
+        <param name="ws-binding" value=":$${internal_ws_port}"/>
+        <param name="wss-binding" value=":$${internal_wss_port}"/>
+        <param name="ssl-cert-dir" value="$${internal_ssl_dir}"/>
+        <param name="rtp-ip" value="$${local_ip_v4}"/>
+        <param name="rtp-timer-name" value="soft"/>
+        <param name="inbound-codec-prefs" value="OPUS,G722,PCMU,PCMA,VP8"/>
+        <param name="outbound-codec-prefs" value="OPUS,G722,PCMU,PCMA,VP8"/>
+        <param name="rtp-protocols" value="udp,tcp,tls"/>
+        <param name="dtls-srtp" value="optional"/>
+        <param name="dtls-srtp-mode" value="srtp-aead-aes-256-gcm,srtp-aead-aes-128-gcm"/>
+        <param name="ice" value="true"/>
+        <param name="enable-3pcc" value="true"/>
+        <param name="media-option" value="resume-media-on-hold"/>
+        <param name="media-option" value="bypass-media-after-att-xfer"/>
+        <param name="apply-nat-acl" value="wan.auto"/>
+        <param name="apply-candidate-acl" value="wan.auto"/>
+        <param name="auth-calls" value="true"/>
+        <param name="hold-music" value="local_stream://moh"/>
+        <param name="presence-proto-lookup" value="true"/>
+        <param name="user-agent-string" value="XCall PBX"/>
+        <param name="dial-string" value="{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})}"/>
+    </settings>
+</profile>
+XML
+chmod 644 "$FS_CONF/sip_profiles/xcall_ws.xml"
+log "added the xcall_ws SIP-over-WebSocket profile (softphone endpoint on 8081/8082)"
 
 # comment out module loads whose .so was not built by this FreeSWITCH build
 # (e.g. mod_verto/mod_avmd on the source build) so startup stays clean
@@ -333,9 +407,14 @@ else:
             return "<!-- {0} (module not built) -->".format(m.group(0))
         return m.group(0)
     s2 = re.sub(r'<load module="([^"]+)"/>', repl, s)
+    # add modules XCall needs that FusionPBX's list omits (if the .so exists)
+    for mod in ("mod_opus", "mod_g722", "mod_pgsql", "mod_curl", "mod_av", "mod_verto", "mod_avmd"):
+        if os.path.exists(os.path.join(moddir, mod + ".so")) and ('module="%s"' % mod) not in s2:
+            s2 = s2.replace("</modules>", '        <load module="%s"/>\n</modules>' % mod, 1)
+            changed = True
     if changed:
         io.open(p, "w", encoding="utf-8").write(s2)
-        print("pruned modules.conf.xml for modules that were not built")
+        print("pruned/updated modules.conf.xml (commented missing, added XCall-needed)")
     else:
         print("modules.conf.xml: all listed modules are present")
 PY
