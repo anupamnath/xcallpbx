@@ -160,8 +160,8 @@ build_freeswitch_from_source() {
         libsqlite3-dev libspeexdsp-dev libspeex-dev libldns-dev libedit-dev libopus-dev \
         libmemcached-dev libshout3-dev libmpg123-dev libmp3lame-dev yasm nasm \
         libsndfile1-dev libuv1-dev libvpx-dev libavformat-dev libswscale-dev sox \
-        libsox-fmt-all libssl-dev libsrtp2-dev libavcodec-dev \
-        libavutil-dev 2>&1 | tail -n 1
+        libsox-fmt-all libssl-dev libsrtp2-dev libavcodec-dev libavutil-dev \
+        libpcre3-dev zlib1g-dev sqlite3 unzip 2>&1 | tail -n 1
 
     # mod_verto / mod_signalwire are NOT built from source (same as the FusionPBX
     # source recipe): they need libks, whose libks2 CMake build requires a
@@ -235,7 +235,10 @@ build_freeswitch_from_source() {
         -e 's:^endpoints/mod_verto:#endpoints/mod_verto:'
 
     log "configuring FreeSWITCH"
-    ./configure -C --enable-portable-binary --disable-dependency-tracking --enable-debug \
+    # clear any cached test results from an earlier failed run (configure -C
+    # can cache "pcre not found" and make the retry fail the same way)
+    rm -f config.cache
+    ./configure --enable-portable-binary --disable-dependency-tracking --enable-debug \
         --prefix=/usr --localstatedir=/var --sysconfdir=/etc \
         --with-openssl --enable-core-pgsql-support >/tmp/xcall-fs-config.log 2>&1 || {
         tail -n 40 /tmp/xcall-fs-config.log >&2
@@ -253,6 +256,14 @@ build_freeswitch_from_source() {
     }
     mkdir -p /var/lib/freeswitch/storage/voicemail
     ldconfig
+
+    # sanity check: the modules the XCall system depends on must exist
+    for m in mod_sofia mod_event_socket mod_dialplan_xml mod_pgsql \
+             mod_local_stream mod_sndfile mod_dptools mod_commands; do
+        if [ ! -f "/usr/lib/freeswitch/mod/$m.so" ]; then
+            warn "missing FreeSWITCH module: $m (check /tmp/xcall-fs-make.log)"
+        fi
+    done
 
     # sounds (callie) + music-on-hold - still public on files.freeswitch.org
     log "installing FreeSWITCH sounds + music"

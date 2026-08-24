@@ -109,6 +109,7 @@ sudo bash deploy/bootstrap.sh   # idempotent — re-applies config
 |---|---|
 | `certbot failed` | DNS A record must point at the server **before** running with `--email`. Re-run with the correct DNS or use `certbot --nginx -d <domain>` manually. |
 | Portal shows "Unable to connect to database" | Check `/etc/fusionpbx/config.conf` password matches the DB: `sudo -u postgres psql -c "ALTER USER fusionpbx WITH PASSWORD '...'"`. |
+| `configure: error: Library requirements ... not met` | A dev package is missing. On re-runs the installer installs everything, but if you build manually run: `apt-get install -y libpcre3-dev zlib1g-dev libjpeg-dev libldns-dev libssl-dev libsqlite3-dev libcurl4-openssl-dev libspeex-dev libspeexdsp-dev libpq-dev` then `rm -f /usr/src/freeswitch-1.10.12/config.cache`. |
 | Softphone can't register | Open 8081/8082 (and 8083/8084 for verto.js clients) on the firewall; confirm the internal sofia profile binds `ws-binding`/`wss-binding` and nginx proxies `/verto` → `127.0.0.1:8081`. |
 | Agent not answering | `sudo tail -f /opt/xcall/ai-agent/logs/xcall-agent.log` and confirm ESL password matches `event_socket.conf.xml`. |
 | Local model not detected | The AI server must be running and reachable from the PBX host; press **Detect** again. |
