@@ -31,7 +31,7 @@ $company = $database->select(
 <body class="xcall-ai">
 <div class="xcall-shell">
   <aside class="xcall-sidebar">
-    <div class="xcall-brand"><span class="mark">X</span><span class="name">XCall</span></div>
+    <div class="xcall-brand"><span class="mark">X</span><span class="name">XCall&nbsp;PBX</span></div>
     <nav class="xcall-nav">
       <div class="nav-label">Admin Panel</div>
       <a href="index.php">Dashboard</a>
@@ -82,8 +82,16 @@ $company = $database->select(
         </div>
       </div>
       <div class="xcall-field">
-        <label>Logo path <span class="hint">— relative to the web root (SVG/PNG)</span></label>
-        <input type="text" name="logo_path" value="<?= htmlspecialchars($company["logo_path"] ?? "/themes/default/images/xcall_logo.svg") ?>">
+        <label>Logo <span class="hint">— shown in the menu bar and on the login page</span></label>
+        <div class="logo-uploader">
+          <img id="logoPreview" class="logo-preview" src="<?= htmlspecialchars($company["logo_path"] ?? "/themes/default/images/xcall_logo.svg", ENT_QUOTES) ?>" alt="Logo preview" onerror="this.style.visibility='hidden'">
+          <div class="logo-uploader-controls">
+            <input type="text" name="logo_path" id="logoPath" value="<?= htmlspecialchars($company["logo_path"] ?? "/themes/default/images/xcall_logo.svg", ENT_QUOTES) ?>" placeholder="/themes/default/images/xcall_logo.svg">
+            <button type="button" class="xcall-btn xcall-btn-outline" id="uploadLogoBtn">Upload logo</button>
+            <input type="file" id="logoFile" accept=".svg,.png,.jpg,.jpeg,.gif,.webp,.ico" style="display:none">
+            <span class="hint" id="uploadStatus"></span>
+          </div>
+        </div>
       </div>
 
       <div class="xcall-section-title">Company details</div>
@@ -121,6 +129,48 @@ $company = $database->select(
 <script>
 (function () {
   var form = document.getElementById('companyForm');
+  var logoPath = document.getElementById('logoPath');
+  var logoFile = document.getElementById('logoFile');
+
+  function setLogoPreview(src) {
+    var img = document.getElementById('logoPreview');
+    img.style.visibility = 'visible';
+    img.setAttribute('src', src);
+  }
+
+  // keep the preview in sync when the path is typed manually
+  if (logoPath) {
+    logoPath.addEventListener('blur', function () {
+      if (logoPath.value) { setLogoPreview(logoPath.value); }
+    });
+  }
+
+  if (document.getElementById('uploadLogoBtn')) {
+    document.getElementById('uploadLogoBtn').addEventListener('click', function () {
+      logoFile.click();
+    });
+    logoFile.addEventListener('change', function () {
+      var file = logoFile.files[0];
+      if (!file) return;
+      var fd = new FormData();
+      fd.append('file', file);
+      var status = document.getElementById('uploadStatus');
+      status.textContent = 'Uploading…';
+      fetch('admin_api.php?action=logo_upload', { method: 'POST', body: fd })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok || res.j.error) { throw new Error(res.j.error || 'upload failed'); }
+          logoPath.value = res.j.path;
+          setLogoPreview(res.j.path);
+          status.textContent = 'Uploaded — click Save changes to apply.';
+        })
+        .catch(function (e) {
+          status.textContent = 'Upload failed: ' + e.message;
+          toast('Upload failed: ' + e.message, 'err');
+        });
+    });
+  }
+
   document.getElementById('saveBtn').addEventListener('click', function () {
     var data = {};
     new FormData(form).forEach(function (v, k) { data[k] = v; });

@@ -33,7 +33,7 @@ portal/
    ```
 
 3. In the portal: **Settings → Theme** → set `custom_css` to
-   `/themes/default/images/xcall.css` and `menu_brand_text` to `XCall`.
+   `/themes/default/images/xcall.css` and `menu_brand_text` to `XCall PBX`.
 4. Create a user + extension for each agent, enable WebRTC, and they can dial
    from `/webphone/` right after login.
 
@@ -51,11 +51,18 @@ The portal is stock FusionPBX plus a few performance tweaks:
 FusionPBX stores branding in the database (`v_default_settings` category
 `theme`), so the rebrand is mostly data, not code:
 
-- `menu_brand_text` — the name shown in the menu bar (set to "XCall").
-- `logo_login` / `logo_header` — image paths on the login page / header.
+- `menu_brand_type` — `text`, `image`, or `image_text`; `image_text` shows the
+  logo + name.
+- `menu_brand_text` / `product_name` — the name shown in the menu bar (XCall PBX).
+- `menu_brand_image` / `logo_login` / `logo_header` — image paths for the menu
+  bar, login page and header.
 - `favicon` — the browser tab icon.
 - `footer` — the text in the footer.
 - `custom_css` — an extra stylesheet appended to every page.
+
+The **Admin Panel → System & Company** page writes these values (name, colors,
+logo) into `v_default_settings` automatically, and lets an admin **upload a
+custom logo** (stored in `/resources/xcall_brand/`).
 
 The `xcall_rebrand.sql` updates all of these. If a setting name differs in your
 FusionPBX version, set it once in the portal UI and export it — the concept is

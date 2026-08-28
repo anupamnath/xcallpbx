@@ -1,119 +1,68 @@
 /* ============================================================
-   XCall brand stylesheet
+   XCall brand stylesheet — SAFE (non-destructive)
    ------------------------------------------------------------
-   Injected into the portal via the theme setting:
-       custom_css = /themes/default/xcall.css
-   (Settings -> Theme -> custom_css). Keeps the stock FusionPBX
-   theme files untouched (survives upgrades) while giving the
-   portal the XCall look.
+   Injected via the theme setting:
+       custom_css = /themes/default/images/xcall.css
+   (Settings -> Theme -> custom_css).
+
+   IMPORTANT: This is intentionally CONSERVATIVE. It only brands
+   the accents (menu bar color, brand text, login logo, footer)
+   and does NOT override FusionPBX's Bootstrap panels / grid /
+   tables. Aggressive `!important` overrides of those core classes
+   that earlier versions relied on made the dashboard look broken
+   and unresponsive. If you want a full dark theme instead, use a
+   separate (optional) stylesheet.
    ============================================================ */
 
 :root {
-  --xcall-bg:        #0f172a;
-  --xcall-surface:   #1e293b;
-  --xcall-panel:     #111c33;
   --xcall-cyan:      #22d3ee;
   --xcall-indigo:    #6366f1;
-  --xcall-indigo-lt: #818cf8;
-  --xcall-text:      #e2e8f0;
-  --xcall-muted:     #94a3b8;
+  --xcall-bg:        #0f172a;
 }
 
-/* ---- shell / background ---- */
-body {
-  background: #f8fafc;
+/* ---- brand text (top menu bar) ---- */
+.menu_brand_text,
+.brand_text {
+  color: var(--xcall-cyan);
+  font-weight: 700;
 }
 
-/* ---- top menu bar ---- */
+/* ---- accent under the top menu bar ---- */
 .menu_bar,
 .navbar,
 .menu-main,
 .header_bar {
-  background: var(--xcall-bg) !important;
-  border-bottom: 2px solid var(--xcall-indigo) !important;
-}
-.menu_bar a,
-.menu-main a,
-.navbar a {
-  color: var(--xcall-text) !important;
-}
-.menu_bar a:hover,
-.menu-main a:hover,
-.navbar a:hover {
-  color: var(--xcall-cyan) !important;
+  border-bottom: 2px solid var(--xcall-indigo);
 }
 
-/* ---- side menu ---- */
-.menu_side_container,
-.menu-side,
-#menu_side_container {
-  background: var(--xcall-bg) !important;
-}
-.menu-side a {
-  color: var(--xcall-muted);
-}
-.menu-side a:hover {
-  color: var(--xcall-cyan);
-}
-
-/* ---- brand text ---- */
-.brand_text,
-.menu_brand_text {
-  color: var(--xcall-cyan) !important;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-/* ---- footer ---- */
+/* ---- footer accent ---- */
 .footer {
-  background: var(--xcall-bg) !important;
-  color: var(--xcall-muted) !important;
-  border-top: 1px solid var(--xcall-indigo) !important;
+  border-top: 1px solid var(--xcall-indigo);
 }
 
-/* ---- links ---- */
-a { color: var(--xcall-indigo); }
-a:hover, a:focus { color: var(--xcall-cyan); }
-
-/* ---- buttons ---- */
-.btn-primary,
-.btn-success,
-input[type="submit"].btn-primary {
-  background: var(--xcall-indigo);
-  border-color: var(--xcall-indigo);
-}
-.btn-primary:hover,
-.btn-success:hover {
-  background: var(--xcall-cyan);
-  border-color: var(--xcall-cyan);
-}
-
-/* ---- login page ---- */
+/* ---- login page logo sizing ---- */
 .login_logo,
 #login_logo {
   max-width: 220px;
   height: auto;
 }
-.login_container,
-.login_body {
-  background: var(--xcall-bg);
+
+/* ---- links / primary buttons get the XCall accent ---- */
+a {
+  color: var(--xcall-indigo);
+}
+.btn-primary,
+.btn-success {
+  background-color: var(--xcall-indigo);
+  border-color: var(--xcall-indigo);
 }
 
-/* ---- panels / cards ---- */
-.panel,
-.card {
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+/* ---- keep contrast on interactive header items ---- */
+.menu_bar a:hover,
+.menu-main a:hover,
+.navbar a:hover {
+  color: var(--xcall-cyan);
 }
-.panel .panel-heading,
-.card-header {
-  background: var(--xcall-bg);
-  color: var(--xcall-text);
-  border-radius: 8px 8px 0 0;
-}
-
-/* ---- table hover, misc ---- */
-.table-striped > tbody > tr:nth-of-type(odd) { background: #f1f5f9; }
 
 /* ---- small performance niceties ---- */
 * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }

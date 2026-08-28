@@ -145,7 +145,7 @@ if (!class_exists('XCallLocalDatabase')) {
             $ins = $this->pdo->prepare(
                 "INSERT OR IGNORE INTO v_default_settings
                  (default_setting_uuid, default_setting_category, default_setting_subcategory, default_setting_value)
-                 VALUES (?, 'theme', 'menu_brand_text', 'XCall')"
+                 VALUES (?, 'theme', 'menu_brand_text', 'XCall PBX')"
             );
             $ins->execute(['00000000-0000-0000-0000-000000000010']);
 

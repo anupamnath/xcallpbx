@@ -29,10 +29,11 @@ docker compose up -d --build
 
 1. **First run of the portal**: complete the FusionPBX web installer at
    `https://<host>/` (create the admin account).
-2. **Apply the XCall brand** (if not auto-applied): the portal entrypoint runs
-   `xcall_rebrand.sql` on boot. Verify in **Settings → Theme** that
+2. **Apply the XCall PBX brand** (if not auto-applied): the portal entrypoint
+   runs `xcall_rebrand.sql` on boot. Verify in **Settings → Theme** that
    `custom_css = /themes/default/images/xcall.css` and `menu_brand_text =
-   XCall`.
+   XCall PBX`. To use your own name/logo, open the **Admin Panel → System &
+   Company** and upload a logo (saved under `/resources/xcall_brand/`).
 3. **Create the specialist**: in the portal add extension `7000` and a user
    linked to it, WebRTC enabled.
 4. **Check the AI agent**: `docker compose logs ai-agent` should show

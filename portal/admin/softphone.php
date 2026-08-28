@@ -31,7 +31,7 @@ $company = $database->select(
 <body class="xcall-ai">
 <div class="xcall-shell">
   <aside class="xcall-sidebar">
-    <div class="xcall-brand"><span class="mark">X</span><span class="name">XCall</span></div>
+    <div class="xcall-brand"><span class="mark">X</span><span class="name">XCall&nbsp;PBX</span></div>
     <nav class="xcall-nav">
       <div class="nav-label">Admin Panel</div>
       <a href="index.php">Dashboard</a>

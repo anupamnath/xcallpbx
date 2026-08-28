@@ -76,6 +76,39 @@
 .sp-line { font-size: 14px; color: var(--x-c-text); }
 .sp-line small { display: block; color: var(--x-c-muted); font-size: 12px; }
 
+/* ---- logo uploader ---- */
+.logo-uploader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid var(--x-c-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.logo-preview {
+  width: 120px;
+  height: 48px;
+  object-fit: contain;
+  background: rgba(15,23,42,.04);
+  border: 1px solid var(--x-c-border);
+  border-radius: 8px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+.logo-uploader-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.logo-uploader-controls input[type="text"] {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+#uploadStatus { font-size: 12px; color: var(--x-c-muted); }
+
 /* ---- admin topbar ---- */
 .xcall-subtitle { margin: 2px 0 0; font-size: 13px; color: var(--x-c-muted); }
 .topbar-actions { display: flex; align-items: center; gap: 8px; }

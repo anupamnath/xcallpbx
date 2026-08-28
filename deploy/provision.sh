@@ -323,10 +323,10 @@ fi
 
 # brand values into v_default_settings for the current domain
 PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -q <<'SQL' 2>/dev/null || true
-UPDATE v_default_settings SET default_setting_value = 'XCall'
+UPDATE v_default_settings SET default_setting_value = 'XCall PBX'
  WHERE default_setting_category = 'theme'
    AND default_setting_subcategory = 'menu_brand_text';
-UPDATE v_default_settings SET default_setting_value = 'Powered by XCall'
+UPDATE v_default_settings SET default_setting_value = 'Powered by XCall PBX'
  WHERE default_setting_category = 'theme'
    AND default_setting_subcategory = 'footer';
 SQL
@@ -356,7 +356,19 @@ chown -R www-data:www-data "$PBX_ROOT/webphone" "$PBX_ROOT/ai-assistant" "$PBX_R
 
 # ---------------- FreeSWITCH XCall overlay ---------------------------------- #
 log "configuring FreeSWITCH (SIP-over-WebSocket / ESL / dialplan)"
-FS_CONF=/etc/freeswitch
+
+# Detect the REAL FreeSWITCH config root. FusionPBX sometimes keeps the live
+# config under /etc/freeswitch.orig (or a nested path) instead of /etc/freeswitch,
+# which silently breaks the WebSocket / vars setup below.
+FS_CONF=""
+for c in /etc/freeswitch.orig/freeswitch /etc/freeswitch.orig /etc/freeswitch /usr/local/freeswitch/conf /usr/share/freeswitch/conf; do
+    if [ -f "$c/sip_profiles/internal.xml" ] && [ -f "$c/vars.xml" ]; then
+        FS_CONF="$c"; break
+    fi
+done
+FS_CONF="${FS_CONF:-/etc/freeswitch}"
+echo "  FreeSWITCH config root: $FS_CONF"
+export FS_CONF
 mkdir -p "$FS_CONF/tls" /var/spool/xcall/recordings /var/spool/xcall/tts
 
 # ESL password (must match the AI agent config)
@@ -374,8 +386,9 @@ fi
 python3 - <<'PY'
 import io, os
 
-# 1. merge XCall vars into vars.xml (FusionPBX manages this file from the DB)
-v = "/etc/freeswitch/vars.xml"
+# 1. merge XCall vars into vars.xml (use the detected config root)
+FC = os.environ.get("FS_CONF", "/etc/freeswitch")
+v = FC + "/vars.xml"
 try:
     s = io.open(v, encoding="utf-8").read()
 except OSError:
@@ -399,7 +412,7 @@ else:
         print("vars.xml already has the XCall vars")
 
 # 2. if the internal profile is a static file, add ws-binding to it as well
-i = "/etc/freeswitch/sip_profiles/internal.xml"
+i = FC + "/sip_profiles/internal.xml"
 if os.path.exists(i):
     s = io.open(i, encoding="utf-8").read()
     if "ws-binding" not in s and "<settings>" in s:
@@ -418,7 +431,7 @@ else:
 
 # 3. FusionPBX's verto.conf hardcodes 8081/8082 - move verto to 8083/8084 so
 #    the SIP-over-WebSocket endpoint owns 8081/8082 without port conflicts
-vc = "/etc/freeswitch/autoload_configs/verto.conf.xml"
+vc = FC + "/autoload_configs/verto.conf.xml"
 if os.path.exists(vc):
     s = io.open(vc, encoding="utf-8").read()
     if "0.0.0.0:8081" in s or "0.0.0.0:8082" in s:
@@ -467,6 +480,34 @@ cat > "$FS_CONF/sip_profiles/xcall_ws.xml" <<'XML'
 XML
 chmod 644 "$FS_CONF/sip_profiles/xcall_ws.xml"
 log "added the xcall_ws SIP-over-WebSocket profile (softphone endpoint on 8081/8082)"
+
+# 5. enable WebRTC in the FusionPBX database. FreeSWITCH serves the SIP profiles
+#    from the database, so the softphone's ws-binding must live in v_sip_profile_settings
+#    on the 'internal' profile AND the domain's WebRTC flag must be on. Do this via SQL
+#    (idempotent) so it works on a fresh DB-managed install.
+if command -v psql >/dev/null 2>&1; then
+    log "enabling WebRTC (ws-binding on the internal SIP profile + domain web_rtc)"
+    PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -q <<'SQL' 2>/dev/null || true
+INSERT INTO v_sip_profile_settings
+    (sip_profile_setting_uuid, sip_profile_uuid, sip_profile_setting_name, sip_profile_setting_value, sip_profile_setting_enabled, sip_profile_setting_description)
+SELECT gen_random_uuid(), p.sip_profile_uuid, 'ws-binding', ':8081', true, 'XCall web softphone (SIP over WebSocket)'
+  FROM v_sip_profiles p
+ WHERE p.sip_profile_name = 'internal'
+   AND NOT EXISTS (SELECT 1 FROM v_sip_profile_settings s WHERE s.sip_profile_uuid = p.sip_profile_uuid AND s.sip_profile_setting_name = 'ws-binding');
+
+INSERT INTO v_sip_profile_settings
+    (sip_profile_setting_uuid, sip_profile_uuid, sip_profile_setting_name, sip_profile_setting_value, sip_profile_setting_enabled, sip_profile_setting_description)
+SELECT gen_random_uuid(), p.sip_profile_uuid, 'wss-binding', ':8082', true, 'XCall web softphone (SIP over WebSocket TLS)'
+  FROM v_sip_profiles p
+ WHERE p.sip_profile_name = 'internal'
+   AND NOT EXISTS (SELECT 1 FROM v_sip_profile_settings s WHERE s.sip_profile_uuid = p.sip_profile_uuid AND s.sip_profile_setting_name = 'wss-binding');
+
+-- the domain WebRTC flag (FusionPBX gates the WS transport on this)
+INSERT INTO v_default_settings (default_setting_uuid, default_setting_category, default_setting_subcategory, default_setting_value)
+SELECT gen_random_uuid(), 'domain', 'web_rtc_enabled', 'true'
+ WHERE NOT EXISTS (SELECT 1 FROM v_default_settings WHERE default_setting_category='domain' AND default_setting_subcategory='web_rtc_enabled');
+SQL
+fi
 
 # comment out module loads whose .so was not built by this FreeSWITCH build
 # (e.g. mod_verto/mod_avmd on the source build) so startup stays clean
