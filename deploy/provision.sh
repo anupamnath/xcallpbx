@@ -248,16 +248,31 @@ io.open(p, "w", encoding="utf-8").write(s)
 print("patched source-release.sh with the low-memory build guard")
 PY
 
+# The official installer's config.sh ships CRLF line endings on some versions,
+# which makes `source ./config.sh` fail with "Syntax error: newline unexpected"
+# and abort the whole base install. Normalize to LF so it sources cleanly.
+sed -i 's/\r$//' "$CONF" 2>/dev/null || true
+
 log "running the official FusionPBX Debian installer (php, postgres, nginx,"
 log "FreeSWITCH source build, FusionPBX app, schema, domain and admin)..."
 cd /usr/src/fusionpbx-install.sh/debian
-bash install.sh >/tmp/xcall-fusionpbx-install.log 2>&1 || true
+bash install.sh >/tmp/xcall-fusionpbx-install.log 2>&1 || {
+    echo "FusionPBX base installer FAILED (exit $?)."
+    echo "  Common cause: the FreeSWITCH source build failed, or config.sh line endings."
+    echo "  See: /tmp/xcall-fusionpbx-install.log (tail below)"
+    tail -n 80 /tmp/xcall-fusionpbx-install.log
+    echo "  Tip: pass --signalwire-token '<free token>' to use the fast package repo instead."
+    exit 1
+}
 tail -n 50 /tmp/xcall-fusionpbx-install.log
 
 log "official FusionPBX installer finished."
 
 # ---------------- verify the FusionPBX schema ------------------------------ #
 log "verifying the FusionPBX database schema"
+if [ ! -d "$PBX_ROOT" ]; then
+    die "FusionPBX web root missing at $PBX_ROOT — the base installer did not complete. See /tmp/xcall-fusionpbx-install.log (tail below), and consider --signalwire-token for the fast FreeSWITCH package install."
+fi
 if ! PGPASSWORD="$DB_PASS_ACTUAL" psql -h 127.0.0.1 -U fusionpbx -d fusionpbx -tAc \
        "SELECT 1 FROM v_domains" 2>/dev/null | grep -q 1; then
     warn "v_domains is missing - re-running the schema upgrade with full output:"
